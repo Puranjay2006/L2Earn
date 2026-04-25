@@ -7,7 +7,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "nft:set-uri": "node scripts/set-nft-uri.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.91.1",

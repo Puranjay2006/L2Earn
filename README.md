@@ -9,7 +9,7 @@ Watch a short video → pass an AI-tutored quiz → earn **dNZD** in your wallet
 Two prompts, fused into one product:
 
 1. **NewMoney's brief** — Ryan Johnson-Hunt's pitch: a learn-to-earn flow where brands sponsor short videos + quizzes, learners earn dNZD on completion, publishers (e.g. NBR-style outlets) earn a margin. CAC that beats Google Ads.
-2. **Hackathon theme — The Great Handover** — by 2126, the buyer is an AI agent, not a human. Brands need to teach *both* audiences. L2Earn's `/api/agents/campaigns` endpoint is the open feed agents read before recommending or transacting.
+2. **Hackathon theme — The Great Handover** — by 2126, the buyer is an AI agent, not a human. Brands need to teach *both* audiences. L2Earn's `/api/agents/campaigns` feed helps agents discover courses, while `/api/agents/passport` lets agents verify a learner's wallet-based credentials.
 
 Stablecoin settlement on dNZD is the connective tissue.
 
@@ -53,9 +53,9 @@ NZD_PAYOUT_AMOUNT=5
 Without these variables, `/api/payout` will return a configuration error and no on-chain transfer is sent.
 `MASTER_WALLET_PRIVATE_KEY` must derive to `MASTER_WALLET_ADDRESS`, otherwise payout calls are rejected.
 
-## NFT milestone mint config
+## Learning Credential NFT config
 
-To mint real learning NFTs when a learner completes 1, 3, and 5 courses, deploy an ERC-721 or ERC-1155 style contract that lets a server-side minter call the mint function, then set:
+L2Earn NFTs are treated as **verifiable learning credentials**, not simple badges. Each minted credential binds the learner wallet, course id, score, Lumin signed certificate hash, and mint transaction. To mint credentials when a learner completes 1, 3, and 5 courses, deploy an ERC-721 or ERC-1155 style contract that lets a server-side minter call the mint function, then set:
 
 ```bash
 NFT_CONTRACT_ADDRESS=0x...
@@ -65,7 +65,16 @@ NFT_MINT_FUNCTION=mint
 ```
 
 For ERC-721 contracts, set `NFT_STANDARD=erc721` and `NFT_MINT_FUNCTION=mint` or `safeMint`.
-The minter wallet must have whatever role your NFT contract requires. On success, `/api/nft` stores the real tx hash and explorer URL in `data/store.json`.
+The minter wallet must have whatever role your NFT contract requires. On success, `/api/nft` stores the real tx hash, credential payload, and explorer URL in `data/store.json`.
+
+To make wallets and marketplaces load the NFT images, set the ERC-1155 contract URI after deployment:
+
+```bash
+NFT_METADATA_BASE_URL=https://your-app.vercel.app
+npm run nft:set-uri
+```
+
+This writes `https://your-app.vercel.app/api/nft/metadata/{id}` to the contract. The metadata endpoint supports both decimal token IDs and ERC-1155's 64-character hex `{id}` format.
 
 ## Demo path (Sunday, 5pm)
 
@@ -77,7 +86,7 @@ The minter wallet must have whatever role your NFT contract requires. On success
 6. Answer → submit. Claude grades and explains every wrong answer.
 7. On pass: **+5.00 dNZD** banner appears. Server-side guard blocks double-credits.
 8. Back to **`/wallet`** — balance card shows 5.00 dNZD with the campaign in tx history.
-9. **The Handover moment** — open `/api/agents/campaigns` in a new tab. Same campaign, machine-readable. *"In 2126 your AI shopping agent ingests this before recommending a brand."*
+9. **The Handover moment** — open `/api/agents/campaigns` and `/api/agents/passport?address=0x...` in new tabs. The first is the machine-readable course feed; the second is a wallet learning passport with verifiable credential NFT metadata.
 10. Close on the NewMoney slide: NZ-regulated, 1:1 reserve-backed, multi-chain via LayerZero.
 
 ## What's where
@@ -94,7 +103,8 @@ app/
     quiz/grade/route.ts          # grades + explanations, decides pass/fail
     wallet/route.ts              # GET balance + tx history
     wallet/credit/route.ts       # POST mints dNZD on quiz pass (one-shot per campaign)
-    agents/campaigns/route.ts    # the machine-readable feed for AI agents
+    agents/campaigns/route.ts    # machine-readable course feed for AI agents
+    agents/passport/route.ts     # wallet learning passport for agent verification
 
 components/
   navbar.tsx, hero-section.tsx, feature-cards.tsx, footer.tsx
@@ -115,7 +125,7 @@ lib/
 ## Tracks targeted
 
 - **NewMoney Builder** ($500) — dNZD is the settlement rail for every payout.
-- **Theme: The Great Handover** — `/api/agents/campaigns` is the open spec for agent indexing; the AI tutor itself is an agent.
+- **Theme: The Great Handover** — `/api/agents/campaigns` is the open spec for agent indexing, and `/api/agents/passport` gives agents a verifiable learner profile.
 - (Stretch, separate planning) — Local Systems · Digital Identity · Avalanche C-Chain · Fire Eyes/ENS.
 
 ## Security notes (honest disclosures for judges)

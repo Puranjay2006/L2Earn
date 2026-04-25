@@ -1,0 +1,14 @@
+<svg width="1200" height="1200" viewBox="0 0 1200 1200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="1200" rx="96" fill="#071616"/>
+  <rect x="72" y="72" width="1056" height="1056" rx="72" fill="#0D2020" stroke="#34D399" stroke-width="8"/>
+  <path d="M600 206L784 312V524L600 630L416 524V312L600 206Z" fill="#34D399"/>
+  <path d="M600 282L718 350V486L600 554L482 486V350L600 282Z" fill="#071616"/>
+  <circle cx="470" cy="700" r="86" fill="#34D399"/>
+  <circle cx="600" cy="700" r="86" fill="#FFD21F"/>
+  <circle cx="730" cy="700" r="86" fill="#38BDF8"/>
+  <text x="470" y="730" text-anchor="middle" fill="#071616" font-family="Arial, Helvetica, sans-serif" font-size="82" font-weight="900">1</text>
+  <text x="600" y="730" text-anchor="middle" fill="#071616" font-family="Arial, Helvetica, sans-serif" font-size="82" font-weight="900">2</text>
+  <text x="730" y="730" text-anchor="middle" fill="#071616" font-family="Arial, Helvetica, sans-serif" font-size="82" font-weight="900">3</text>
+  <text x="600" y="914" text-anchor="middle" fill="#FFFFFF" font-family="Arial, Helvetica, sans-serif" font-size="78" font-weight="800">THREE COURSE</text>
+  <text x="600" y="1002" text-anchor="middle" fill="#34D399" font-family="Arial, Helvetica, sans-serif" font-size="52" font-weight="800">STREAK</text>
+</svg>

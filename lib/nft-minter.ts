@@ -40,6 +40,16 @@ const erc1155MintAbi = [
   },
 ] as const;
 
+const erc1155MetadataAbi = [
+  {
+    type: "function",
+    name: "setURI",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "newuri", type: "string" }],
+    outputs: [],
+  },
+] as const;
+
 const EXPLORER_TX_BASE: Record<number, string> = {
   1: "https://etherscan.io/tx/",
   10: "https://optimistic.etherscan.io/tx/",
@@ -132,6 +142,52 @@ export async function mintLearningNft(to: string, tokenId: number): Promise<Mint
   const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
   if (receipt.status !== "success") {
     throw new Error(`NFT mint transaction reverted: ${txHash}`);
+  }
+
+  return {
+    txHash,
+    chainId,
+    explorerUrl: EXPLORER_TX_BASE[chainId] ? `${EXPLORER_TX_BASE[chainId]}${txHash}` : txHash,
+  };
+}
+
+export async function setLearningNftMetadataUri(uri: string): Promise<MintedNft> {
+  const contractAddress = requireAddress(process.env.NFT_CONTRACT_ADDRESS, "NFT_CONTRACT_ADDRESS");
+  const privateKey = requirePrivateKey(
+    process.env.NFT_MINTER_PRIVATE_KEY ?? process.env.MASTER_WALLET_PRIVATE_KEY,
+    "NFT_MINTER_PRIVATE_KEY",
+  );
+  const rpcUrl = process.env.EVM_RPC_URL?.trim() ?? process.env.NEXT_PUBLIC_BASE_RPC_URL?.trim();
+  if (!rpcUrl) {
+    throw new Error("EVM_RPC_URL is not configured.");
+  }
+  if (!/^https?:\/\/.+\{id\}/.test(uri)) {
+    throw new Error("NFT metadata URI must be an absolute URL containing {id}.");
+  }
+
+  const chainId = Number.parseInt(process.env.EVM_CHAIN_ID?.trim() ?? "84532", 10);
+  const chain = chainId === base.id ? base : baseSepolia;
+  const account = privateKeyToAccount(privateKey);
+  const publicClient = createPublicClient({
+    chain,
+    transport: http(rpcUrl),
+  });
+  const walletClient = createWalletClient({
+    account,
+    chain,
+    transport: http(rpcUrl),
+  });
+
+  const txHash = await walletClient.writeContract({
+    address: contractAddress,
+    abi: erc1155MetadataAbi,
+    functionName: "setURI",
+    args: [uri],
+  });
+
+  const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+  if (receipt.status !== "success") {
+    throw new Error(`NFT metadata URI transaction reverted: ${txHash}`);
   }
 
   return {

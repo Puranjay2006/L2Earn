@@ -36,8 +36,13 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/agent-campaigns.json" className="transition-colors hover:text-foreground">
-                  Agent Feed (JSON)
+                <Link href="/api/agents/campaigns" className="transition-colors hover:text-foreground">
+                  Agent Campaign Feed
+                </Link>
+              </li>
+              <li>
+                <Link href="/api/agents/passport?address=0xc9624a72f8f5a4bcf5aa9ae45b37f6268680a0e4" className="transition-colors hover:text-foreground">
+                  Agent Passport Example
                 </Link>
               </li>
             </ul>

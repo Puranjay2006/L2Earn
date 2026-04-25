@@ -23,6 +23,14 @@ type ProfileNft = {
   name: string;
   description: string;
   threshold: number;
+  credential?: {
+    wallet: string;
+    course: string;
+    score: number;
+    total: number;
+    luminSignedCertificateHash: string;
+    mintTx: string;
+  };
   txHash: string;
   explorerUrl: string;
   ts: number;
@@ -232,12 +240,12 @@ export function ProfileDashboard() {
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-sm">
               <Award className="h-4 w-4 text-primary" />
-              NFT Badges
+              Credential NFTs
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-black text-foreground">{nftClaims.length}</p>
-            <p className="mt-1 text-xs text-muted-foreground">on-chain learning credentials</p>
+            <p className="mt-1 text-xs text-muted-foreground">verifiable identity credentials</p>
           </CardContent>
         </Card>
       </section>
@@ -247,13 +255,13 @@ export function ProfileDashboard() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <Award className="h-5 w-5 text-primary" />
-              NFT Badges
+              Learning Credential NFTs
             </CardTitle>
           </CardHeader>
           <CardContent>
             {nftClaims.length === 0 ? (
               <p className="rounded-lg border border-dashed border-border/60 p-6 text-center text-sm text-muted-foreground">
-                Complete your first course to mint a learning NFT.
+                Complete your first course to mint a wallet-bound learning credential.
               </p>
             ) : (
               <ul className="grid gap-3 md:grid-cols-2">
@@ -266,6 +274,13 @@ export function ProfileDashboard() {
                       </div>
                       <Badge variant="secondary">#{claim.tokenId}</Badge>
                     </div>
+                    {claim.credential ? (
+                      <p className="mt-3 break-all text-[11px] text-muted-foreground">
+                        Wallet {shortAddress(claim.credential.wallet)} · course {claim.credential.course} · score{" "}
+                        {claim.credential.score}/{claim.credential.total} · Lumin certificate hash{" "}
+                        {claim.credential.luminSignedCertificateHash}
+                      </p>
+                    ) : null}
                     <a
                       href={claim.explorerUrl}
                       target="_blank"

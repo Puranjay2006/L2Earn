@@ -15,11 +15,24 @@ export type Tx = {
 
 export type NftClaim = {
   campaignId: string;
+  holder: string;
   tokenId: number;
   name: string;
   description: string;
+  imageUrl?: string;
   threshold: number;
   completedCount: number;
+  credential: {
+    type: "LearningCredentialNFT";
+    issuer: "L2Earn";
+    signer: "Lumin";
+    wallet: string;
+    course: string;
+    score: number;
+    total: number;
+    luminSignedCertificateHash: string;
+    mintTx: string;
+  };
   txHash: string;
   chainId: number;
   explorerUrl: string;
@@ -41,7 +54,7 @@ type StoreShape = {
   quizSessions: Record<string, { questions: GeneratedQuestion[]; ts: number }>;
 };
 
-const DATA_DIR = path.join(process.cwd(), "data");
+const DATA_DIR = process.env.VERCEL ? path.join("/tmp", "l2earn-data") : path.join(process.cwd(), "data");
 const DATA_FILE = path.join(DATA_DIR, "store.json");
 
 let cache: StoreShape | null = null;
@@ -133,20 +146,23 @@ export const NFT_MILESTONES = [
   {
     threshold: 1,
     tokenId: 1001,
-    name: "L2Earn First Lesson",
-    description: "Awarded for completing your first L2Earn course.",
+    name: "L2Earn First Lesson Credential",
+    description: "Verifiable learning credential for completing your first L2Earn course.",
+    imageUrl: "/nft/first-lesson.svg",
   },
   {
     threshold: 3,
     tokenId: 1003,
-    name: "L2Earn Three Course Streak",
-    description: "Awarded for completing three L2Earn courses.",
+    name: "L2Earn Three Course Identity Credential",
+    description: "Verifiable learning credential for completing three L2Earn courses.",
+    imageUrl: "/nft/three-course-streak.svg",
   },
   {
     threshold: 5,
     tokenId: 1005,
-    name: "L2Earn Five Course Master",
-    description: "Awarded for completing five L2Earn courses.",
+    name: "L2Earn Five Course Master Credential",
+    description: "Verifiable learning credential for completing five L2Earn courses.",
+    imageUrl: "/nft/five-course-master.svg",
   },
 ] as const;
 
@@ -164,10 +180,23 @@ export async function listNftClaims(address: string): Promise<NftClaim[]> {
       );
       return {
         ...claim,
+        holder: claim.holder ?? norm(address),
         name: claim.name ?? milestone?.name ?? "L2Earn Learning NFT",
         description: claim.description ?? milestone?.description ?? "Awarded for completing L2Earn courses.",
+        imageUrl: claim.imageUrl ?? milestone?.imageUrl ?? "/nft/first-lesson.svg",
         threshold: claim.threshold ?? milestone?.threshold ?? 1,
         completedCount: claim.completedCount ?? milestone?.threshold ?? 1,
+        credential: claim.credential ?? {
+          type: "LearningCredentialNFT",
+          issuer: "L2Earn",
+          signer: "Lumin",
+          wallet: claim.holder ?? norm(address),
+          course: claim.campaignId,
+          score: 0,
+          total: 0,
+          luminSignedCertificateHash: "",
+          mintTx: claim.txHash,
+        },
       };
     })
     .sort((a, b) => b.ts - a.ts);

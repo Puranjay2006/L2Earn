@@ -12,6 +12,13 @@ type NftClaim = {
   description: string;
   threshold: number;
   completedCount: number;
+  credential?: {
+    wallet: string;
+    course: string;
+    score: number;
+    total: number;
+    luminSignedCertificateHash: string;
+  };
   txHash: string;
   explorerUrl?: string;
   ts: number;
@@ -76,7 +83,7 @@ export function NftCollection() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
           <Award className="h-5 w-5 text-primary" />
-          Learning NFTs
+          Learning Credential NFTs
           <span className="ml-auto text-xs font-normal text-muted-foreground">
             {completedCount} courses
           </span>
@@ -86,7 +93,7 @@ export function NftCollection() {
         {loading ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Loading NFTs...
+            Loading credentials...
           </div>
         ) : error ? (
           <p className="rounded-lg border border-dashed border-border/60 p-4 text-center text-sm text-muted-foreground">
@@ -94,7 +101,7 @@ export function NftCollection() {
           </p>
         ) : claims.length === 0 ? (
           <p className="rounded-lg border border-dashed border-border/60 p-4 text-center text-sm text-muted-foreground">
-            Complete your first course to unlock a learning NFT.
+            Complete your first course to unlock a wallet-bound learning credential.
           </p>
         ) : (
           <ul className="space-y-3">
@@ -109,6 +116,12 @@ export function NftCollection() {
                   </div>
                   <Badge variant="secondary">#{claim.tokenId}</Badge>
                 </div>
+                {claim.credential ? (
+                  <p className="mt-3 break-all text-[11px] text-muted-foreground">
+                    Course {claim.credential.course} · score {claim.credential.score}/{claim.credential.total} ·
+                    Lumin certificate hash {claim.credential.luminSignedCertificateHash}
+                  </p>
+                ) : null}
                 <p className="mt-3 break-all text-[11px] text-muted-foreground">
                   Mint tx{" "}
                   {claim.explorerUrl?.startsWith("http") ? (

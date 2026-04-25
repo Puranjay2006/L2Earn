@@ -1,0 +1,10 @@
+<svg width="1200" height="1200" viewBox="0 0 1200 1200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="1200" rx="96" fill="#140A1F"/>
+  <rect x="72" y="72" width="1056" height="1056" rx="72" fill="#1F1230" stroke="#A78BFA" stroke-width="8"/>
+  <path d="M600 178L691 415L945 428L748 589L814 836L600 700L386 836L452 589L255 428L509 415L600 178Z" fill="#A78BFA"/>
+  <path d="M600 300L656 449L816 458L692 558L734 712L600 628L466 712L508 558L384 458L544 449L600 300Z" fill="#FFD21F"/>
+  <text x="600" y="595" text-anchor="middle" fill="#140A1F" font-family="Arial, Helvetica, sans-serif" font-size="170" font-weight="900">5</text>
+  <path d="M350 828H850" stroke="#A78BFA" stroke-width="26" stroke-linecap="round"/>
+  <path d="M426 898H774" stroke="#FFFFFF" stroke-opacity="0.8" stroke-width="20" stroke-linecap="round"/>
+  <text x="600" y="1010" text-anchor="middle" fill="#FFFFFF" font-family="Arial, Helvetica, sans-serif" font-size="74" font-weight="800">COURSE MASTER</text>
+</svg>

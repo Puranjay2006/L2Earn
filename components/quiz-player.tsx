@@ -54,6 +54,14 @@ type NftClaim = {
   description: string;
   threshold: number;
   completedCount: number;
+  credential?: {
+    wallet: string;
+    course: string;
+    score: number;
+    total: number;
+    luminSignedCertificateHash: string;
+    mintTx: string;
+  };
   txHash: string;
   explorerUrl?: string;
 };
@@ -127,18 +135,20 @@ export function QuizPlayer({ campaignId, rewardCents }: Props) {
         feedback,
       });
       if (passed) {
-        void claimNftRewards();
+        void claimNftRewards(score, campaign.quizQuestions.length);
       }
     } catch (e) {
       setState({ status: "error", message: (e as Error).message });
     }
   }
 
-  async function claimNftRewards() {
+  async function claimNftRewards(scoreOverride?: number, totalOverride?: number) {
     if (!isConnected || !address || isClaimingNfts) {
       setNftMessage("Connect MetaMask first.");
       return;
     }
+    const gradedScore = state.status === "graded" ? state.score : undefined;
+    const gradedTotal = state.status === "graded" ? state.total : undefined;
 
     setIsClaimingNfts(true);
     setNftMessage(null);
@@ -149,6 +159,8 @@ export function QuizPlayer({ campaignId, rewardCents }: Props) {
         body: JSON.stringify({
           userAddress: address,
           campaignId,
+          score: scoreOverride ?? gradedScore,
+          total: totalOverride ?? gradedTotal,
         }),
       });
 
@@ -412,10 +424,10 @@ export function QuizPlayer({ campaignId, rewardCents }: Props) {
             <div className="w-full rounded-lg border border-primary/30 bg-primary/5 p-4">
               <p className="flex items-center gap-2 text-sm font-semibold">
                 <Award className="h-4 w-4 text-primary" />
-                Learning NFT rewards
+                Learning Credential NFT
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Complete 1, 3, and 5 courses to unlock milestone NFTs for your wallet.
+                Verifiable credential bound to your wallet, course score, Lumin certificate hash, and mint tx.
               </p>
               {isClaimingNfts ? (
                 <p className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
@@ -430,6 +442,12 @@ export function QuizPlayer({ campaignId, rewardCents }: Props) {
                     <li key={claim.tokenId} className="rounded-md border border-primary/20 bg-background/50 p-3">
                       <p className="text-sm font-semibold">{claim.name}</p>
                       <p className="mt-1 text-xs text-muted-foreground">{claim.description}</p>
+                      {claim.credential ? (
+                        <p className="mt-1 break-all text-[11px] text-muted-foreground">
+                          Score {claim.credential.score}/{claim.credential.total} · certificate hash{" "}
+                          {claim.credential.luminSignedCertificateHash}
+                        </p>
+                      ) : null}
                       <p className="mt-1 break-all text-[11px] text-muted-foreground">
                         Token #{claim.tokenId} · mint tx{" "}
                         {claim.explorerUrl?.startsWith("http") ? (
@@ -450,7 +468,12 @@ export function QuizPlayer({ campaignId, rewardCents }: Props) {
                 </ul>
               ) : null}
               {!isClaimingNfts && !nftMessage ? (
-                <Button size="sm" variant="outline" className="mt-3 w-full font-semibold" onClick={claimNftRewards}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="mt-3 w-full font-semibold"
+                  onClick={() => claimNftRewards()}
+                >
                   Claim NFT rewards
                 </Button>
               ) : null}

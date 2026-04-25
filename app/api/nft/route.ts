@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { getCampaign } from "@/lib/campaigns";
 import { mintLearningNft } from "@/lib/nft-minter";
@@ -26,6 +27,21 @@ function parseAddress(address: string | null): string | null {
   return trimmed;
 }
 
+function parseScore(value: unknown, fallback: number): number {
+  return Number.isInteger(value) && Number(value) >= 0 ? Number(value) : fallback;
+}
+
+function hashCredential(input: {
+  wallet: string;
+  course: string;
+  score: number;
+  total: number;
+  tokenId: number;
+  mintTx: string;
+}) {
+  return createHash("sha256").update(JSON.stringify(input)).digest("hex");
+}
+
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const userAddress = parseAddress(url.searchParams.get("userAddress"));
@@ -49,9 +65,9 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  let body: { userAddress?: string; campaignId?: string };
+  let body: { userAddress?: string; campaignId?: string; score?: number; total?: number };
   try {
-    body = (await req.json()) as { userAddress?: string; campaignId?: string };
+    body = (await req.json()) as { userAddress?: string; campaignId?: string; score?: number; total?: number };
   } catch {
     return badRequest("Invalid JSON body.");
   }
@@ -62,9 +78,12 @@ export async function POST(req: Request) {
   if (!userAddress) {
     return badRequest("Invalid userAddress.");
   }
-  if (!campaignId || !getCampaign(campaignId)) {
+  const campaign = campaignId ? getCampaign(campaignId) : null;
+  if (!campaignId || !campaign) {
     return badRequest("Invalid campaignId.");
   }
+  const total = parseScore(body.total, campaign.quizQuestions.length);
+  const score = Math.min(parseScore(body.score, total), total);
 
   const plan = await getPendingNftMilestones(userAddress, campaignId);
   if (!plan.ok) {
@@ -75,13 +94,34 @@ export async function POST(req: Request) {
   try {
     for (const milestone of plan.pendingMilestones) {
       const mint = await mintLearningNft(userAddress, milestone.tokenId);
+      const credentialInput = {
+        wallet: userAddress,
+        course: campaignId,
+        score,
+        total,
+        tokenId: milestone.tokenId,
+        mintTx: mint.txHash,
+      };
       mintedClaims.push({
         campaignId,
+        holder: userAddress,
         tokenId: milestone.tokenId,
         name: milestone.name,
         description: milestone.description,
+        imageUrl: milestone.imageUrl,
         threshold: milestone.threshold,
         completedCount: plan.completedCount,
+        credential: {
+          type: "LearningCredentialNFT",
+          issuer: "L2Earn",
+          signer: "Lumin",
+          wallet: userAddress,
+          course: campaignId,
+          score,
+          total,
+          luminSignedCertificateHash: hashCredential(credentialInput),
+          mintTx: mint.txHash,
+        },
         txHash: mint.txHash,
         chainId: mint.chainId,
         explorerUrl: mint.explorerUrl,

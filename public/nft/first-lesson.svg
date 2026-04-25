@@ -1,0 +1,11 @@
+<svg width="1200" height="1200" viewBox="0 0 1200 1200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="1200" rx="96" fill="#0B0B12"/>
+  <rect x="72" y="72" width="1056" height="1056" rx="72" fill="#12131C" stroke="#FFD21F" stroke-width="8"/>
+  <circle cx="600" cy="422" r="210" fill="#FFD21F"/>
+  <circle cx="600" cy="422" r="152" fill="#0B0B12"/>
+  <path d="M514 421L576 484L696 348" stroke="#FFD21F" stroke-width="42" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M338 720H862" stroke="#FFD21F" stroke-width="28" stroke-linecap="round"/>
+  <path d="M416 790H784" stroke="#FFFFFF" stroke-opacity="0.8" stroke-width="22" stroke-linecap="round"/>
+  <text x="600" y="914" text-anchor="middle" fill="#FFFFFF" font-family="Arial, Helvetica, sans-serif" font-size="82" font-weight="800">FIRST LESSON</text>
+  <text x="600" y="1002" text-anchor="middle" fill="#FFD21F" font-family="Arial, Helvetica, sans-serif" font-size="44" font-weight="700">L2EARN BADGE</text>
+</svg>
