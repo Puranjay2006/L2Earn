@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { WalletConnector } from "@/components/wallet-connector";
 import { DnzdBalance } from "@/components/dnzd-balance";
+import { NftCollection } from "@/components/nft-collection";
 import { Navbar } from "@/components/navbar";
 
 export const metadata = {
@@ -36,6 +37,7 @@ export default function WalletPage() {
             <div className="flex flex-col items-center gap-6">
               <WalletConnector />
               <DnzdBalance />
+              <NftCollection />
             </div>
 
             <div className="mt-12 rounded-lg border border-border bg-card p-6">

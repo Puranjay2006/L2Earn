@@ -1,11 +1,17 @@
 import Link from "next/link";
-import { ArrowRight, Coins } from "lucide-react";
+import { ArrowRight, CheckCircle2, Coins } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { Campaign } from "@/lib/campaigns";
 import { formatDnzd } from "@/lib/dnzd";
 
-export function CampaignCard({ campaign }: { campaign: Campaign }) {
+export function CampaignCard({
+  campaign,
+  completed = false,
+}: {
+  campaign: Campaign;
+  completed?: boolean;
+}) {
   return (
     <Link href={`/campaigns/${campaign.id}`} className="group block">
       <Card className="h-full border-border/60 bg-card/60 backdrop-blur transition-all group-hover:border-primary/50 group-hover:bg-card">
@@ -14,10 +20,18 @@ export function CampaignCard({ campaign }: { campaign: Campaign }) {
             <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
               {campaign.brand}
             </span>
-            <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2.5 py-1 text-xs font-bold text-primary">
-              <Coins className="h-3.5 w-3.5" />
-              {formatDnzd(campaign.rewardCents)} dNZD
-            </span>
+            <div className="flex items-center gap-2">
+              {completed ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-1 text-xs font-bold text-emerald-300">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Completed
+                </span>
+              ) : null}
+              <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2.5 py-1 text-xs font-bold text-primary">
+                <Coins className="h-3.5 w-3.5" />
+                {formatDnzd(campaign.rewardCents)} dNZD
+              </span>
+            </div>
           </div>
           <h3 className="mb-2 text-2xl font-bold tracking-tight text-foreground">
             {campaign.title}
@@ -37,7 +51,7 @@ export function CampaignCard({ campaign }: { campaign: Campaign }) {
               ))}
             </div>
             <span className="inline-flex items-center gap-1 text-sm font-semibold text-primary transition-transform group-hover:translate-x-0.5">
-              Start
+              {completed ? "Review" : "Start"}
               <ArrowRight className="h-4 w-4" />
             </span>
           </div>

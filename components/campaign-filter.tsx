@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Search, X } from "lucide-react";
+import { useAccount } from "wagmi";
 import { CampaignCard } from "@/components/campaign-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,8 +10,39 @@ import type { Campaign } from "@/lib/campaigns";
 import { cn } from "@/lib/utils";
 
 export function CampaignFilter({ campaigns }: { campaigns: Campaign[] }) {
+  const { address, isConnected } = useAccount();
   const [activeTag, setActiveTag] = useState("All");
   const [query, setQuery] = useState("");
+  const [completedCampaignIds, setCompletedCampaignIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!isConnected || !address) {
+      setCompletedCampaignIds(new Set());
+      return;
+    }
+
+    const walletAddress = address;
+    let cancelled = false;
+    async function loadCompletedCampaigns() {
+      try {
+        const res = await fetch(`/api/profile?userAddress=${encodeURIComponent(walletAddress)}`);
+        const payload = (await res.json()) as {
+          ok?: boolean;
+          completedCampaigns?: { id: string }[];
+        };
+        if (!cancelled && res.ok && payload.ok) {
+          setCompletedCampaignIds(new Set((payload.completedCampaigns ?? []).map((campaign) => campaign.id)));
+        }
+      } catch {
+        if (!cancelled) setCompletedCampaignIds(new Set());
+      }
+    }
+
+    void loadCompletedCampaigns();
+    return () => {
+      cancelled = true;
+    };
+  }, [address, isConnected]);
 
   const tags = useMemo(
     () => ["All", ...Array.from(new Set(campaigns.flatMap((campaign) => campaign.tags))).sort()],
@@ -84,7 +116,11 @@ export function CampaignFilter({ campaigns }: { campaigns: Campaign[] }) {
       {filteredCampaigns.length > 0 ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {filteredCampaigns.map((campaign) => (
-            <CampaignCard key={campaign.id} campaign={campaign} />
+            <CampaignCard
+              key={campaign.id}
+              campaign={campaign}
+              completed={completedCampaignIds.has(campaign.id)}
+            />
           ))}
         </div>
       ) : (

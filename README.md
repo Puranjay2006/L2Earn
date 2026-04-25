@@ -53,6 +53,20 @@ NZD_PAYOUT_AMOUNT=5
 Without these variables, `/api/payout` will return a configuration error and no on-chain transfer is sent.
 `MASTER_WALLET_PRIVATE_KEY` must derive to `MASTER_WALLET_ADDRESS`, otherwise payout calls are rejected.
 
+## NFT milestone mint config
+
+To mint real learning NFTs when a learner completes 1, 3, and 5 courses, deploy an ERC-721 or ERC-1155 style contract that lets a server-side minter call the mint function, then set:
+
+```bash
+NFT_CONTRACT_ADDRESS=0x...
+NFT_MINTER_PRIVATE_KEY=0x...
+NFT_STANDARD=erc1155 # erc1155 calls mint(address,uint256,uint256,bytes)
+NFT_MINT_FUNCTION=mint
+```
+
+For ERC-721 contracts, set `NFT_STANDARD=erc721` and `NFT_MINT_FUNCTION=mint` or `safeMint`.
+The minter wallet must have whatever role your NFT contract requires. On success, `/api/nft` stores the real tx hash and explorer URL in `data/store.json`.
+
 ## Demo path (Sunday, 5pm)
 
 1. **`/`** — NewMoney-themed landing. Click "Browse Campaigns".

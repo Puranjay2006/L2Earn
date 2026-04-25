@@ -2,19 +2,22 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { Menu, Wallet, X } from "lucide-react";
 import Image from "next/image";
 import { useEnsAvatar, useEnsName } from "wagmi";
 import { useAppKit, useAppKitAccount } from "@reown/appkit/react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import "@/lib/wagmi-config";
 
 const navLinks = [
   { href: "/", label: "HOME" },
   { href: "/campaigns", label: "CAMPAIGNS" },
+  { href: "/profile", label: "PROFILE" },
 ];
 
-function WalletTrigger({
+function WalletTriggerInner({
   mobile = false,
   onOpen,
 }: {
@@ -81,6 +84,16 @@ function WalletTrigger({
     </button>
   );
 }
+
+const WalletTrigger = dynamic(() => Promise.resolve(WalletTriggerInner), {
+  ssr: false,
+  loading: () => (
+    <Button size="sm" className="gap-2 font-semibold" disabled>
+      <Wallet className="h-4 w-4" />
+      Connect Wallet
+    </Button>
+  ),
+});
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);

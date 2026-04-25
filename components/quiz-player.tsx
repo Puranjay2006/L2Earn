@@ -8,7 +8,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { getCampaign } from "@/lib/campaigns";
-import { CheckCircle2, XCircle, Sparkles, Wallet, Loader2, Coins, ExternalLink } from "lucide-react";
+import { Award, CheckCircle2, XCircle, Sparkles, Wallet, Loader2, Coins } from "lucide-react";
 import Link from "next/link";
 
 const NZD_SEND_AMOUNT = "5";
@@ -48,6 +48,16 @@ type Props = {
   rewardCents: number;
 };
 
+type NftClaim = {
+  tokenId: number;
+  name: string;
+  description: string;
+  threshold: number;
+  completedCount: number;
+  txHash: string;
+  explorerUrl?: string;
+};
+
 export function QuizPlayer({ campaignId, rewardCents }: Props) {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
@@ -63,6 +73,9 @@ export function QuizPlayer({ campaignId, rewardCents }: Props) {
   const [onChainMessage, setOnChainMessage] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
   const [isSendingOnChain, setIsSendingOnChain] = useState(false);
+  const [nftMessage, setNftMessage] = useState<string | null>(null);
+  const [nftClaims, setNftClaims] = useState<NftClaim[]>([]);
+  const [isClaimingNfts, setIsClaimingNfts] = useState(false);
 
   const reward = (rewardCents / 100).toFixed(2);
   const displayWallet = ensName ?? address;
@@ -113,8 +126,61 @@ export function QuizPlayer({ campaignId, rewardCents }: Props) {
         total: campaign.quizQuestions.length,
         feedback,
       });
+      if (passed) {
+        void claimNftRewards();
+      }
     } catch (e) {
       setState({ status: "error", message: (e as Error).message });
+    }
+  }
+
+  async function claimNftRewards() {
+    if (!isConnected || !address || isClaimingNfts) {
+      setNftMessage("Connect MetaMask first.");
+      return;
+    }
+
+    setIsClaimingNfts(true);
+    setNftMessage(null);
+    try {
+      const res = await fetch("/api/nft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userAddress: address,
+          campaignId,
+        }),
+      });
+
+      const payload = (await res.json()) as {
+        ok?: boolean;
+        completedCount?: number;
+        newlyClaimed?: NftClaim[];
+        claims?: NftClaim[];
+        error?: string;
+      };
+
+      if (!res.ok || !payload.ok) {
+        setNftMessage(payload.error ?? "NFT reward claim failed.");
+        return;
+      }
+
+      setNftClaims(payload.newlyClaimed ?? []);
+      const completedCount = payload.completedCount ?? 0;
+      if (payload.newlyClaimed?.length) {
+        setNftMessage(
+          `Unlocked ${payload.newlyClaimed.length} NFT reward${payload.newlyClaimed.length > 1 ? "s" : ""}. ${completedCount} course${completedCount === 1 ? "" : "s"} completed.`,
+        );
+      } else {
+        setNftMessage(
+          `Course completion recorded. ${completedCount} course${completedCount === 1 ? "" : "s"} completed. No new milestone NFT this time.`,
+        );
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setNftMessage(`NFT reward claim failed: ${message}`);
+    } finally {
+      setIsClaimingNfts(false);
     }
   }
 
@@ -310,33 +376,85 @@ export function QuizPlayer({ campaignId, rewardCents }: Props) {
           </Card>
         ))}
         {state.passed ? (
-          <div className="w-full rounded-lg border border-border/50 bg-muted/30 p-4">
-            <p className="text-sm font-semibold">Claim your reward</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              We will send {reward} dNZD to your connected wallet through the Reown flow. You can track it in your wallet app or on the explorer.
-            </p>
-            <p className="mt-1 break-all text-xs font-mono">{displayWallet ?? "Connect wallet first"}</p>
-            <Button size="sm" className="mt-3 w-full font-semibold" onClick={sendRealNzdOnChain} disabled={isSendingOnChain}>
-              {isSendingOnChain ? "Sending reward..." : "Send reward to my wallet"}
-            </Button>
-            {onChainMessage ? <p className="mt-2 text-xs text-muted-foreground">{onChainMessage}</p> : null}
-            {txHash ? (
-              <p className="mt-1 break-all text-[11px] text-muted-foreground">
-                Tx:{" "}
-                {EXPLORER_TX_BASE[chainId] ? (
-                  <a
-                    href={`${EXPLORER_TX_BASE[chainId]}${txHash}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline hover:no-underline"
-                  >
-                    {txHash}
-                  </a>
-                ) : (
-                  txHash
-                )}
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="w-full rounded-lg border border-border/50 bg-muted/30 p-4">
+              <p className="flex items-center gap-2 text-sm font-semibold">
+                <Coins className="h-4 w-4 text-primary" />
+                Claim your dNZD
               </p>
-            ) : null}
+              <p className="mt-1 text-xs text-muted-foreground">
+                We will send {reward} dNZD to your connected wallet through the Reown flow. You can track it in your wallet app or on the explorer.
+              </p>
+              <p className="mt-1 break-all text-xs font-mono">{displayWallet ?? "Connect wallet first"}</p>
+              <Button size="sm" className="mt-3 w-full font-semibold" onClick={sendRealNzdOnChain} disabled={isSendingOnChain}>
+                {isSendingOnChain ? "Sending reward..." : "Send reward to my wallet"}
+              </Button>
+              {onChainMessage ? <p className="mt-2 text-xs text-muted-foreground">{onChainMessage}</p> : null}
+              {txHash ? (
+                <p className="mt-1 break-all text-[11px] text-muted-foreground">
+                  Tx:{" "}
+                  {EXPLORER_TX_BASE[chainId] ? (
+                    <a
+                      href={`${EXPLORER_TX_BASE[chainId]}${txHash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline hover:no-underline"
+                    >
+                      {txHash}
+                    </a>
+                  ) : (
+                    txHash
+                  )}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="w-full rounded-lg border border-primary/30 bg-primary/5 p-4">
+              <p className="flex items-center gap-2 text-sm font-semibold">
+                <Award className="h-4 w-4 text-primary" />
+                Learning NFT rewards
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Complete 1, 3, and 5 courses to unlock milestone NFTs for your wallet.
+              </p>
+              {isClaimingNfts ? (
+                <p className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Claiming NFT rewards...
+                </p>
+              ) : null}
+              {nftMessage ? <p className="mt-3 text-xs text-muted-foreground">{nftMessage}</p> : null}
+              {nftClaims.length > 0 ? (
+                <ul className="mt-3 space-y-2">
+                  {nftClaims.map((claim) => (
+                    <li key={claim.tokenId} className="rounded-md border border-primary/20 bg-background/50 p-3">
+                      <p className="text-sm font-semibold">{claim.name}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{claim.description}</p>
+                      <p className="mt-1 break-all text-[11px] text-muted-foreground">
+                        Token #{claim.tokenId} · mint tx{" "}
+                        {claim.explorerUrl?.startsWith("http") ? (
+                          <a
+                            href={claim.explorerUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="underline hover:no-underline"
+                          >
+                            {claim.txHash}
+                          </a>
+                        ) : (
+                          claim.txHash
+                        )}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              {!isClaimingNfts && !nftMessage ? (
+                <Button size="sm" variant="outline" className="mt-3 w-full font-semibold" onClick={claimNftRewards}>
+                  Claim NFT rewards
+                </Button>
+              ) : null}
+            </div>
           </div>
         ) : (
           <Button size="lg" onClick={startQuiz} className="w-full gap-2 font-semibold">
