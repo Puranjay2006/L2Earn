@@ -44,6 +44,23 @@ type LuminSigner = {
   signer_role?: string;
 };
 
+function isLikelyHtml(value: string) {
+  const text = value.trim().toLowerCase();
+  return text.startsWith("<html") || text.startsWith("<!doctype html") || text.includes("<body");
+}
+
+function sanitizeLuminErrorMessage(input: unknown, status: number): string {
+  const fallback = status >= 500
+    ? "Lumin service is temporarily unavailable. Please try again shortly."
+    : "Lumin request failed.";
+
+  if (typeof input !== "string") return fallback;
+  const trimmed = input.trim();
+  if (!trimmed) return fallback;
+  if (isLikelyHtml(trimmed)) return fallback;
+  return trimmed.length > 240 ? `${trimmed.slice(0, 237)}...` : trimmed;
+}
+
 function stableHash(input: unknown) {
   return createHash("sha256").update(JSON.stringify(input)).digest("hex");
 }
@@ -204,11 +221,14 @@ export async function createLuminLearningCertificate(
     }
 
     if (!res.ok) {
+      const rawError =
+        payload.message ??
+        (typeof payload.error === "string" ? payload.error : JSON.stringify(payload.error ?? payload));
       return {
         status: "error",
         signer: "Lumin",
         documentHash: fallbackHash,
-        error: payload.message ?? JSON.stringify(payload.error ?? payload) ?? `HTTP ${res.status}`,
+        error: sanitizeLuminErrorMessage(rawError, res.status),
       };
     }
 

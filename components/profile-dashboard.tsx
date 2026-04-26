@@ -360,11 +360,24 @@ export function ProfileDashboard() {
                       <Badge variant="secondary">#{claim.tokenId}</Badge>
                     </div>
                     {claim.credential ? (
-                      <p className="mt-3 break-all text-[11px] text-muted-foreground">
-                        Wallet {shortAddress(claim.credential.wallet)} · course {claim.credential.course} · score{" "}
-                        {claim.credential.score}/{claim.credential.total} · Lumin certificate hash{" "}
-                        {claim.credential.luminSignedCertificateHash}
-                      </p>
+                      <div className="mt-3 space-y-1 text-[11px] text-muted-foreground">
+                        <p>
+                          <span className="font-semibold text-foreground">Wallet:</span>{" "}
+                          {shortAddress(claim.credential.wallet)}
+                        </p>
+                        <p>
+                          <span className="font-semibold text-foreground">Course:</span>{" "}
+                          {claim.credential.course}
+                        </p>
+                        <p>
+                          <span className="font-semibold text-foreground">Score:</span>{" "}
+                          {claim.credential.score}/{claim.credential.total}
+                        </p>
+                        <p className="break-all">
+                          <span className="font-semibold text-foreground">Lumin Hash:</span>{" "}
+                          {claim.credential.luminSignedCertificateHash}
+                        </p>
+                      </div>
                     ) : null}
                     {claim.certificate ? (
                       <div className="mt-3 space-y-2 text-xs">
@@ -379,7 +392,7 @@ export function ProfileDashboard() {
                             <ExternalLink className="h-3 w-3" />
                           </a>
                         ) : (
-                          <div className="space-y-1">
+                          <div>
                             <a
                               href={certificateHref(claim)}
                               target="_blank"
@@ -389,10 +402,6 @@ export function ProfileDashboard() {
                               Open generated PDF
                               <ExternalLink className="h-3 w-3" />
                             </a>
-                            <p className="text-muted-foreground">
-                              Lumin certificate: {claim.certificate.status.replaceAll("_", " ")}
-                              {claim.certificate.error ? ` (${claim.certificate.error})` : ""}
-                            </p>
                           </div>
                         )}
                         {claim.certificate.signatureRequestId ? (
@@ -402,7 +411,7 @@ export function ProfileDashboard() {
                         ) : null}
                       </div>
                     ) : null}
-                    {!claim.certificate ? (
+                    {claim.certificate ? null : (
                       <a
                         href={certificateHref(claim)}
                         target="_blank"
@@ -412,16 +421,19 @@ export function ProfileDashboard() {
                         Open generated PDF
                         <ExternalLink className="h-3 w-3" />
                       </a>
-                    ) : null}
-                    <a
-                      href={claim.explorerUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-3 inline-flex items-center gap-1 break-all text-xs font-semibold text-primary hover:underline"
-                    >
-                      View mint tx
-                      <ExternalLink className="h-3 w-3" />
-                    </a>
+                    )}
+                    <div className="mt-3">
+                      <p className="text-[11px] font-semibold text-foreground">Mint Transaction</p>
+                      <a
+                        href={claim.explorerUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 break-all text-xs font-semibold text-primary hover:underline"
+                      >
+                        View mint tx
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </div>
                   </li>
                 ))}
               </ul>
