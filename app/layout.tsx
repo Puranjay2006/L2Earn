@@ -1,5 +1,8 @@
 import type { Metadata } from 'next'
 import { Analytics } from '@vercel/analytics/next'
+import { Footer } from '@/components/footer'
+import { Web3Provider } from '@/components/web3-provider'
+import { PageAnimationWrapper } from '@/components/page-animation-wrapper'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -33,8 +36,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
-      <body className="font-sans antialiased">
-        {children}
+      <body className="font-sans antialiased flex flex-col min-h-screen">
+        <Web3Provider>
+          <div className="flex-1">
+            <PageAnimationWrapper>{children}</PageAnimationWrapper>
+          </div>
+          <Footer />
+        </Web3Provider>
         <Analytics />
       </body>
     </html>
