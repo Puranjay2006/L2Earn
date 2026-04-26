@@ -16,6 +16,8 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 import { Progress } from "@/components/ui/progress";
+import { CAMPAIGNS } from "@/lib/campaigns";
+import { readLocalLearningState } from "@/lib/client-learning-store";
 import { formatDnzd } from "@/lib/dnzd";
 
 type ProfileNft = {
@@ -56,6 +58,7 @@ type ProfileResponse = {
   address?: string;
   balanceCents?: number;
   txs?: ProfileTx[];
+  completedCampaigns?: { id: string; title: string; brand: string; tags: string[]; rewardCents: number }[];
   completedCount?: number;
   totalCampaigns?: number;
   nftClaims?: ProfileNft[];
@@ -85,20 +88,28 @@ export function ProfileDashboard() {
     query: { enabled: Boolean(address) },
   });
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
+  const [localCompletedIds, setLocalCompletedIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isConnected || !address) {
       setProfile(null);
+      setLocalCompletedIds([]);
       return;
     }
 
     const walletAddress = address;
     let cancelled = false;
+    const syncLocal = () => {
+      if (!cancelled) {
+        setLocalCompletedIds(readLocalLearningState(walletAddress).completedCampaignIds);
+      }
+    };
     async function loadProfile() {
       setLoading(true);
       setError(null);
+      syncLocal();
       try {
         const res = await fetch(`/api/profile?userAddress=${encodeURIComponent(walletAddress)}`);
         const payload = (await res.json()) as ProfileResponse;
@@ -117,17 +128,48 @@ export function ProfileDashboard() {
     }
 
     void loadProfile();
+    window.addEventListener("l2earn-learning-updated", syncLocal);
     return () => {
       cancelled = true;
+      window.removeEventListener("l2earn-learning-updated", syncLocal);
     };
   }, [address, isConnected]);
 
+  const completedCampaigns = useMemo(() => {
+    const byId = new Map(CAMPAIGNS.map((campaign) => [campaign.id, campaign]));
+    const mergedIds = new Set([
+      ...(profile?.completedCampaigns ?? []).map((campaign) => campaign.id),
+      ...localCompletedIds,
+    ]);
+    return [...mergedIds].sort().map((campaignId) => {
+      const campaign = byId.get(campaignId);
+      return {
+        id: campaignId,
+        title: campaign?.title ?? campaignId,
+        brand: campaign?.brand ?? "Unknown",
+        tags: campaign?.tags ?? [],
+        rewardCents: campaign?.rewardCents ?? 0,
+      };
+    });
+  }, [localCompletedIds, profile?.completedCampaigns]);
+
+  const mergedTagCounts = useMemo(
+    () =>
+      completedCampaigns.reduce<Record<string, number>>((acc, campaign) => {
+        for (const tag of campaign.tags) {
+          acc[tag] = (acc[tag] ?? 0) + 1;
+        }
+        return acc;
+      }, {}),
+    [completedCampaigns],
+  );
+
   const sortedTags = useMemo(
     () =>
-      Object.entries(profile?.tagCounts ?? {})
+      Object.entries(mergedTagCounts)
         .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
         .slice(0, 6),
-    [profile?.tagCounts],
+    [mergedTagCounts],
   );
   const tagChartData = useMemo(
     () =>
@@ -186,7 +228,7 @@ export function ProfileDashboard() {
     );
   }
 
-  const completedCount = profile?.completedCount ?? 0;
+  const completedCount = completedCampaigns.length;
   const totalCampaigns = profile?.totalCampaigns ?? 0;
   const progress = totalCampaigns > 0 ? Math.round((completedCount / totalCampaigns) * 100) : 0;
   const nftClaims = profile?.nftClaims ?? [];

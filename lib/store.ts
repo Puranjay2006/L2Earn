@@ -275,6 +275,50 @@ export async function recordCourseCompletionAndNftClaims(
   };
 }
 
+export type LeaderboardWallet = {
+  address: string;
+  balanceCents: number;
+  txs: Tx[];
+  completedCampaigns: string[];
+  nftClaims: NftClaim[];
+  lastActive: number;
+};
+
+export async function listLeaderboardWallets(): Promise<LeaderboardWallet[]> {
+  const s = await load();
+  const addresses = new Set([
+    ...Object.keys(s.balances),
+    ...Object.keys(s.txs),
+    ...Object.keys(s.completedCampaigns),
+    ...Object.keys(s.nftClaims),
+  ]);
+
+  const wallets = await Promise.all(
+    [...addresses].map(async (address) => {
+      const txs = [...(s.txs[address] ?? [])].sort((a, b) => b.ts - a.ts);
+      const nftClaims = await listNftClaims(address);
+      return {
+        address,
+        balanceCents: s.balances[address] ?? 0,
+        txs,
+        completedCampaigns: [...(s.completedCampaigns[address] ?? [])].sort(),
+        nftClaims,
+        lastActive: Math.max(0, txs[0]?.ts ?? 0, nftClaims[0]?.ts ?? 0),
+      };
+    }),
+  );
+
+  return wallets.sort((a, b) => {
+    const completedDelta = b.completedCampaigns.length - a.completedCampaigns.length;
+    if (completedDelta) return completedDelta;
+    const credentialDelta = b.nftClaims.length - a.nftClaims.length;
+    if (credentialDelta) return credentialDelta;
+    const balanceDelta = b.balanceCents - a.balanceCents;
+    if (balanceDelta) return balanceDelta;
+    return b.lastActive - a.lastActive;
+  });
+}
+
 const QUIZ_TTL_MS = 30 * 60 * 1000;
 
 export async function rememberQuizSession(

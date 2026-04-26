@@ -6,6 +6,7 @@ import { useAccount } from "wagmi";
 import { CampaignCard } from "@/components/campaign-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { readLocalLearningState } from "@/lib/client-learning-store";
 import type { Campaign } from "@/lib/campaigns";
 import { cn } from "@/lib/utils";
 
@@ -23,7 +24,13 @@ export function CampaignFilter({ campaigns }: { campaigns: Campaign[] }) {
 
     const walletAddress = address;
     let cancelled = false;
+    const syncLocal = () => {
+      if (!cancelled) {
+        setCompletedCampaignIds(new Set(readLocalLearningState(walletAddress).completedCampaignIds));
+      }
+    };
     async function loadCompletedCampaigns() {
+      syncLocal();
       try {
         const res = await fetch(`/api/profile?userAddress=${encodeURIComponent(walletAddress)}`);
         const payload = (await res.json()) as {
@@ -31,16 +38,23 @@ export function CampaignFilter({ campaigns }: { campaigns: Campaign[] }) {
           completedCampaigns?: { id: string }[];
         };
         if (!cancelled && res.ok && payload.ok) {
-          setCompletedCampaignIds(new Set((payload.completedCampaigns ?? []).map((campaign) => campaign.id)));
+          setCompletedCampaignIds(
+            new Set([
+              ...readLocalLearningState(walletAddress).completedCampaignIds,
+              ...(payload.completedCampaigns ?? []).map((campaign) => campaign.id),
+            ]),
+          );
         }
       } catch {
-        if (!cancelled) setCompletedCampaignIds(new Set());
+        syncLocal();
       }
     }
 
     void loadCompletedCampaigns();
+    window.addEventListener("l2earn-learning-updated", syncLocal);
     return () => {
       cancelled = true;
+      window.removeEventListener("l2earn-learning-updated", syncLocal);
     };
   }, [address, isConnected]);
 

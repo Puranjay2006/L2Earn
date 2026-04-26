@@ -14,6 +14,7 @@ import "@/lib/wagmi-config";
 const navLinks = [
   { href: "/", label: "HOME" },
   { href: "/campaigns", label: "CAMPAIGNS" },
+  { href: "/leaderboard", label: "LEADERBOARD" },
   { href: "/profile", label: "PROFILE" },
 ];
 

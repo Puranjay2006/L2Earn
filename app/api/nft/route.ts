@@ -92,6 +92,7 @@ export async function POST(req: Request) {
   }
 
   const mintedClaims: NftClaim[] = [];
+  let mintError: string | null = null;
   try {
     for (const milestone of plan.pendingMilestones) {
       const mint = await mintLearningNft(userAddress, milestone.tokenId);
@@ -141,8 +142,7 @@ export async function POST(req: Request) {
       });
     }
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    return serverError(`NFT mint failed: ${message}`);
+    mintError = error instanceof Error ? error.message : String(error);
   }
 
   const claimResult = await recordCourseCompletionAndNftClaims(
@@ -151,6 +151,20 @@ export async function POST(req: Request) {
     plan.completedCampaigns,
     mintedClaims,
   );
+
+  if (mintError) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: `NFT mint failed: ${mintError}`,
+        courseCompletionRecorded: true,
+        milestones: NFT_MILESTONES,
+        completedCampaigns: plan.completedCampaigns,
+        ...claimResult,
+      },
+      { status: 502 },
+    );
+  }
 
   return NextResponse.json({
     ok: true,

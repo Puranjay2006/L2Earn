@@ -8,6 +8,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { getCampaign } from "@/lib/campaigns";
+import { rememberLocalCourseCompletion } from "@/lib/client-learning-store";
 import { Award, CheckCircle2, XCircle, Sparkles, Wallet, Loader2, Coins } from "lucide-react";
 import Link from "next/link";
 
@@ -152,6 +153,7 @@ export function QuizPlayer({ campaignId, rewardCents }: Props) {
 
     setIsClaimingNfts(true);
     setNftMessage(null);
+    rememberLocalCourseCompletion(address, campaignId);
     try {
       const res = await fetch("/api/nft", {
         method: "POST",
@@ -169,11 +171,20 @@ export function QuizPlayer({ campaignId, rewardCents }: Props) {
         completedCount?: number;
         newlyClaimed?: NftClaim[];
         claims?: NftClaim[];
+        courseCompletionRecorded?: boolean;
         error?: string;
       };
 
+      if ((res.ok && payload.ok) || payload.courseCompletionRecorded) {
+        rememberLocalCourseCompletion(address, campaignId);
+      }
+
       if (!res.ok || !payload.ok) {
-        setNftMessage(payload.error ?? "NFT reward claim failed.");
+        setNftMessage(
+          payload.courseCompletionRecorded
+            ? `Course completion recorded. ${payload.error ?? "NFT credential mint failed."}`
+            : payload.error ?? "NFT reward claim failed.",
+        );
         return;
       }
 
