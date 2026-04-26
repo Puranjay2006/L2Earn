@@ -27,7 +27,7 @@ export async function GET(
   if (!userAddress) return badRequest("Invalid userAddress.");
   if (!Number.isInteger(id) || id <= 0) return badRequest("Invalid tokenId.");
 
-  const claims = await listNftClaims(userAddress);
+  const claims = listNftClaims(userAddress);
   const claim = claims.find((item) => item.tokenId === id);
   const fallbackCampaignId = url.searchParams.get("campaignId")?.trim();
   const fallbackScore = Number.parseInt(url.searchParams.get("score") ?? "", 10);

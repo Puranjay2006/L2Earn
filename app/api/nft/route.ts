@@ -51,10 +51,8 @@ export async function GET(req: Request) {
     return badRequest("Invalid userAddress.");
   }
 
-  const [claims, completedCampaigns] = await Promise.all([
-    listNftClaims(userAddress),
-    listCompletedCampaigns(userAddress),
-  ]);
+  const claims = listNftClaims(userAddress);
+  const completedCampaigns = listCompletedCampaigns(userAddress);
 
   return NextResponse.json({
     ok: true,
@@ -86,7 +84,7 @@ export async function POST(req: Request) {
   const total = parseScore(body.total, campaign.quizQuestions.length);
   const score = Math.min(parseScore(body.score, total), total);
 
-  const plan = await getPendingNftMilestones(userAddress, campaignId);
+  const plan = getPendingNftMilestones(userAddress, campaignId);
   if (!plan.ok) {
     return badRequest(plan.reason ?? "Unknown error");
   }
@@ -145,7 +143,7 @@ export async function POST(req: Request) {
     mintError = error instanceof Error ? error.message : String(error);
   }
 
-  const claimResult = await recordCourseCompletionAndNftClaims(
+  const claimResult = recordCourseCompletionAndNftClaims(
     userAddress,
     campaignId,
     plan.completedCampaigns,

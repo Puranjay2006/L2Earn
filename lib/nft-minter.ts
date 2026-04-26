@@ -97,7 +97,7 @@ function simulatedMint(to: string, tokenId: number): MintedNft {
   // Deterministic fake tx hash derived from wallet + tokenId + day
   const seed = `${to.toLowerCase()}-${tokenId}-${Math.floor(Date.now() / 86_400_000)}`;
   const hash = createHash("sha256").update(seed).digest("hex");
-  const txHash = `0x${hash}` as `0x${string}`;
+  const txHash = `0x${hash}`;
   const chainId = 84532; // Base Sepolia
   return {
     txHash,

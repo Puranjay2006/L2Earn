@@ -75,7 +75,10 @@ function buildCertificateFields(input: LuminCertificateInput) {
 }
 
 function escapePdfText(value: string) {
-  return value.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
+  return value
+    .replaceAll("\\", String.raw`\\`)
+    .replaceAll("(", String.raw`\(`)
+    .replaceAll(")", String.raw`\)`);
 }
 
 export function createCertificatePdf(input: LuminCertificateInput): Buffer {
@@ -184,7 +187,7 @@ export async function createLuminLearningCertificate(
       name: process.env.LUMIN_SIGNER_NAME?.trim() || "L2Earn Issuer",
       ...(signerRole ? { signer_role: signerRole } : {}),
     };
-    const expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000;
+    const expiresAt = Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60;
     const hasTemplate = Boolean(process.env.LUMIN_TEMPLATE_ID?.trim());
     const res = hasTemplate
       ? await sendFromTemplate(input, signer, expiresAt)
