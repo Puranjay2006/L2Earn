@@ -33,6 +33,15 @@ export type NftClaim = {
     luminSignedCertificateHash: string;
     mintTx: string;
   };
+  certificate?: {
+    status: "not_configured" | "signature_request_sent" | "error";
+    signer: "Lumin";
+    signatureRequestId?: string;
+    documentHash: string;
+    documentUrl?: string;
+    luminDetailsUrl?: string;
+    error?: string;
+  };
   txHash: string;
   chainId: number;
   explorerUrl: string;

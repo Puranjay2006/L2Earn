@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Award, Loader2 } from "lucide-react";
+import { Award, ExternalLink, Loader2 } from "lucide-react";
 import { useAccount } from "wagmi";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +18,12 @@ type NftClaim = {
     score: number;
     total: number;
     luminSignedCertificateHash: string;
+  };
+  certificate?: {
+    status: "not_configured" | "signature_request_sent" | "error";
+    documentUrl?: string;
+    luminDetailsUrl?: string;
+    error?: string;
   };
   txHash: string;
   explorerUrl?: string;
@@ -78,6 +84,17 @@ export function NftCollection() {
 
   if (!isConnected) return null;
 
+  const certificateHref = (claim: NftClaim) => {
+    const params = new URLSearchParams({ userAddress: address ?? "" });
+    if (claim.credential) {
+      params.set("campaignId", claim.credential.course);
+      params.set("score", String(claim.credential.score));
+      params.set("total", String(claim.credential.total));
+      params.set("mintTx", claim.txHash);
+    }
+    return `/api/certificates/${claim.tokenId}?${params.toString()}`;
+  };
+
   return (
     <Card className="w-full max-w-md border-primary/30 bg-primary/5">
       <CardHeader>
@@ -121,6 +138,48 @@ export function NftCollection() {
                     Course {claim.credential.course} · score {claim.credential.score}/{claim.credential.total} ·
                     Lumin certificate hash {claim.credential.luminSignedCertificateHash}
                   </p>
+                ) : null}
+                {claim.certificate ? (
+                  <div className="mt-3 text-xs">
+                    {claim.certificate.documentUrl || claim.certificate.luminDetailsUrl ? (
+                      <a
+                        href={claim.certificate.documentUrl ?? claim.certificate.luminDetailsUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 font-semibold text-primary hover:underline"
+                      >
+                        Open signed certificate
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    ) : (
+                      <div className="space-y-1">
+                        <a
+                          href={certificateHref(claim)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 font-semibold text-primary hover:underline"
+                        >
+                          Open generated PDF
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                        <p className="text-muted-foreground">
+                          Lumin certificate: {claim.certificate.status.replaceAll("_", " ")}
+                          {claim.certificate.error ? ` (${claim.certificate.error})` : ""}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+                {!claim.certificate ? (
+                  <a
+                    href={certificateHref(claim)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+                  >
+                    Open generated PDF
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
                 ) : null}
                 <p className="mt-3 break-all text-[11px] text-muted-foreground">
                   Mint tx{" "}

@@ -31,6 +31,15 @@ type ProfileNft = {
     luminSignedCertificateHash: string;
     mintTx: string;
   };
+  certificate?: {
+    status: "not_configured" | "signature_request_sent" | "error";
+    signer: "Lumin";
+    signatureRequestId?: string;
+    documentHash: string;
+    documentUrl?: string;
+    luminDetailsUrl?: string;
+    error?: string;
+  };
   txHash: string;
   explorerUrl: string;
   ts: number;
@@ -183,6 +192,17 @@ export function ProfileDashboard() {
   const nftClaims = profile?.nftClaims ?? [];
   const txs = profile?.txs ?? [];
   const displayName = ensName ?? (address ? shortAddress(address) : "Connected wallet");
+  const certificateHref = (claim: ProfileNft) => {
+    if (!profile?.address) return "#";
+    const params = new URLSearchParams({ userAddress: profile.address });
+    if (claim.credential) {
+      params.set("campaignId", claim.credential.course);
+      params.set("score", String(claim.credential.score));
+      params.set("total", String(claim.credential.total));
+      params.set("mintTx", claim.credential.mintTx);
+    }
+    return `/api/certificates/${claim.tokenId}?${params.toString()}`;
+  };
 
   return (
     <div className="space-y-8">
@@ -280,6 +300,53 @@ export function ProfileDashboard() {
                         {claim.credential.score}/{claim.credential.total} · Lumin certificate hash{" "}
                         {claim.credential.luminSignedCertificateHash}
                       </p>
+                    ) : null}
+                    {claim.certificate ? (
+                      <div className="mt-3 space-y-2 text-xs">
+                        {claim.certificate.documentUrl || claim.certificate.luminDetailsUrl ? (
+                          <a
+                            href={claim.certificate.documentUrl ?? claim.certificate.luminDetailsUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 font-semibold text-primary hover:underline"
+                          >
+                            Open signed certificate
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        ) : (
+                          <div className="space-y-1">
+                            <a
+                              href={certificateHref(claim)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 font-semibold text-primary hover:underline"
+                            >
+                              Open generated PDF
+                              <ExternalLink className="h-3 w-3" />
+                            </a>
+                            <p className="text-muted-foreground">
+                              Lumin certificate: {claim.certificate.status.replaceAll("_", " ")}
+                              {claim.certificate.error ? ` (${claim.certificate.error})` : ""}
+                            </p>
+                          </div>
+                        )}
+                        {claim.certificate.signatureRequestId ? (
+                          <p className="break-all text-[11px] text-muted-foreground">
+                            Lumin request {claim.certificate.signatureRequestId}
+                          </p>
+                        ) : null}
+                      </div>
+                    ) : null}
+                    {!claim.certificate ? (
+                      <a
+                        href={certificateHref(claim)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+                      >
+                        Open generated PDF
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
                     ) : null}
                     <a
                       href={claim.explorerUrl}

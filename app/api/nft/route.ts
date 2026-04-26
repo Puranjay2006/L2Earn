@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { getCampaign } from "@/lib/campaigns";
+import { createLuminLearningCertificate } from "@/lib/lumin";
 import { mintLearningNft } from "@/lib/nft-minter";
 import {
   getPendingNftMilestones,
@@ -102,6 +103,16 @@ export async function POST(req: Request) {
         tokenId: milestone.tokenId,
         mintTx: mint.txHash,
       };
+      const certificate = await createLuminLearningCertificate({
+        wallet: userAddress,
+        courseId: campaignId,
+        courseTitle: campaign.title,
+        brand: campaign.brand,
+        score,
+        total,
+        tokenId: milestone.tokenId,
+        mintTx: mint.txHash,
+      });
       mintedClaims.push({
         campaignId,
         holder: userAddress,
@@ -119,9 +130,10 @@ export async function POST(req: Request) {
           course: campaignId,
           score,
           total,
-          luminSignedCertificateHash: hashCredential(credentialInput),
+          luminSignedCertificateHash: certificate.documentHash || hashCredential(credentialInput),
           mintTx: mint.txHash,
         },
+        certificate,
         txHash: mint.txHash,
         chainId: mint.chainId,
         explorerUrl: mint.explorerUrl,

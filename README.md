@@ -67,6 +67,28 @@ NFT_MINT_FUNCTION=mint
 For ERC-721 contracts, set `NFT_STANDARD=erc721` and `NFT_MINT_FUNCTION=mint` or `safeMint`.
 The minter wallet must have whatever role your NFT contract requires. On success, `/api/nft` stores the real tx hash, credential payload, and explorer URL in `data/store.json`.
 
+## Lumin certificate config
+
+L2Earn can send a Lumin eSign certificate request after a credential NFT is minted. There are two modes:
+
+- **No-template mode**: set a Lumin API key and signer email. L2Earn generates a simple certificate PDF and sends it to Lumin directly.
+- **Template mode**: optionally set `LUMIN_TEMPLATE_ID` if your Lumin workspace provides a reusable template.
+
+Set:
+
+```bash
+LUMIN_API_BASE_URL=https://api-sandbox.luminpdf.com/v1
+LUMIN_API_KEY=...
+LUMIN_SIGNER_EMAIL=issuer@example.com
+LUMIN_SIGNER_NAME=L2Earn Issuer
+LUMIN_TEMPLATE_ID=... # optional
+LUMIN_SIGNER_ROLE=Issuer # optional, only if the template uses signer roles
+```
+
+When `LUMIN_TEMPLATE_ID` is present, the app submits both `tags` and `fields` so the same env works with merge tags or form fields. Suggested template keys are `Certificate.Wallet`, `Certificate.CourseId`, `Certificate.CourseTitle`, `Certificate.Brand`, `Certificate.Score`, `Certificate.TokenId`, `Certificate.MintTx`, and `Certificate.IssuedAt`.
+
+If Lumin is not configured, NFT minting still works and the credential stores a local deterministic certificate hash. If Lumin is configured, the credential stores the Lumin signature request id, document/details URL, and a hash derived from the Lumin request.
+
 To make wallets and marketplaces load the NFT images, set the ERC-1155 contract URI after deployment:
 
 ```bash
