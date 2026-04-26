@@ -7,10 +7,23 @@ import { AlertCircle, Check, Loader2, ExternalLink } from "lucide-react";
 
 const ENS_USE_TESTNET = true;
 const ENS_SUFFIX = ".basetest.eth";
+const BASENAME_CACHE_KEY = "l2earn.basenameByAddress";
+
+function cacheBasename(address: string, basename: string) {
+  try {
+    const raw = localStorage.getItem(BASENAME_CACHE_KEY);
+    const map = raw ? (JSON.parse(raw) as Record<string, string>) : {};
+    map[address.toLowerCase()] = basename;
+    localStorage.setItem(BASENAME_CACHE_KEY, JSON.stringify(map));
+  } catch {
+    // Ignore cache failures; registration flow should continue.
+  }
+}
 
 export function BasenameClaim() {
   const { address } = useAccount();
   const [label, setLabel] = useState("");
+  const [years, setYears] = useState(1);
   const [price, setPrice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [resolvedName, setResolvedName] = useState<string | null>(null);
@@ -43,7 +56,7 @@ export function BasenameClaim() {
 
     try {
       const res = await fetch(
-        `/api/ens/register-price?label=${encodeURIComponent(label)}&years=1&testnet=${ENS_USE_TESTNET}`
+        `/api/ens/register-price?label=${encodeURIComponent(label)}&years=${years}&testnet=${ENS_USE_TESTNET}`
       );
       const data = await res.json();
 
@@ -76,7 +89,7 @@ export function BasenameClaim() {
         body: JSON.stringify({
           label,
           owner: address,
-          years: 1,
+          years,
           testnet: ENS_USE_TESTNET,
           reverseRecord: true,
         }),
@@ -85,11 +98,13 @@ export function BasenameClaim() {
       const data = await res.json();
 
       if (data.ok) {
+        const fullName = (data.fullName as string | undefined) ?? `${label}${ENS_SUFFIX}`;
         setTxHash(data.txHash);
         setExplorerUrl(data.explorerUrl);
+        setResolvedName(fullName);
+        cacheBasename(address, fullName);
         setLabel("");
         setPrice(null);
-        setResolvedName(null);
       } else {
         setError(data.error);
       }
@@ -160,6 +175,28 @@ export function BasenameClaim() {
           </div>
         </div>
 
+        <div>
+          <label htmlFor="basename-years" className="block text-sm font-medium text-foreground mb-2">
+            Registration length
+          </label>
+          <select
+            id="basename-years"
+            value={years}
+            onChange={(e) => {
+              setYears(Number.parseInt(e.target.value, 10));
+              setPrice(null);
+            }}
+            className="w-full rounded-lg border border-primary/20 bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            disabled={loading}
+          >
+            <option value={1}>1 year</option>
+            <option value={2}>2 years</option>
+            <option value={3}>3 years</option>
+            <option value={5}>5 years</option>
+            <option value={10}>10 years</option>
+          </select>
+        </div>
+
         {error && (
           <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 flex gap-2">
             <AlertCircle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
@@ -173,7 +210,7 @@ export function BasenameClaim() {
               Price: <span className="text-primary">{price} ETH</span>
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              For 1 year registration on Base Sepolia
+              For {years} {years === 1 ? "year" : "years"} registration on Base Sepolia
             </p>
           </div>
         )}

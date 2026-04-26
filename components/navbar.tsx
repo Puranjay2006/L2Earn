@@ -12,6 +12,7 @@ import { useAccount } from "wagmi";
 const navLinks = [
   { href: "/", label: "HOME" },
   { href: "/campaigns", label: "CAMPAIGNS" },
+  { href: "/ens", label: "ENS USERNAME" },
   { href: "/leaderboard", label: "LEADERBOARD" },
   { href: "/profile", label: "PROFILE" },
   { href: "/how-it-works", label: "HOW IT WORKS" },

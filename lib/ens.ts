@@ -1,4 +1,4 @@
-import { createPublicClient, http } from "viem";
+import { createPublicClient, getAddress, http } from "viem";
 import { baseSepolia, base } from "viem/chains";
 
 // ─── ENS Resolution Client ────────────────────────────────────────────
@@ -17,14 +17,14 @@ const publicClientMainnet = createPublicClient({
 
 export const BASENAME_REGISTRAR = {
   testnet: {
-    controller: "0x49aE3cC2e3AA768B1e5654f5D3C6002144A59581",
-    resolver: "0x6533C94469D7D6e8bfF3d5f24c2f27e64b01c8d8",
+    controller: getAddress("0x49aE3cC2e3AA768B1e5654f5D3C6002144A59581"),
+    resolver: getAddress("0x6533C94469D7D6e8bfF3d5f24c2f27e64b01c8d8"),
     suffix: ".basetest.eth",
     chainId: 84532,
   },
   mainnet: {
-    controller: "0x4cCb0BB02FCABA27e82a56646E81d8c5bC4119a5",
-    resolver: "0x03c4738ee98ae44591e1a4a4f3cab6641d95dd9a",
+    controller: getAddress("0x4cCb0BB02FCABA27e82a56646E81d8c5bC4119a5"),
+    resolver: getAddress("0x03c4738ee98ae44591e1a4a4f3cab6641d95dd9a"),
     suffix: ".base.eth",
     chainId: 8453,
   },
@@ -107,13 +107,13 @@ export async function getBasenamePrice(
     const durationSeconds = BigInt(durationYears * 31_557_600); // seconds per year
 
     const price = await client.readContract({
-      address: registrar.controller as `0x${string}`,
+      address: registrar.controller,
       abi: REGISTRAR_ABI,
       functionName: "registerPrice",
       args: [label, durationSeconds],
     });
 
-    return price as bigint;
+    return price;
   } catch (error) {
     console.error("Price lookup error:", error);
     return null;

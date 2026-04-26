@@ -14,6 +14,91 @@ const publicClientBaseSepolia = createPublicClient({
   transport: http("https://sepolia.base.org"),
 });
 
+const BASENAME_CACHE_KEY = "l2earn.basenameByAddress";
+
+function getCachedBasename(address: string): string | null {
+  if (globalThis.window === undefined) return null;
+  try {
+    const raw = localStorage.getItem(BASENAME_CACHE_KEY);
+    if (!raw) return null;
+    const map = JSON.parse(raw) as Record<string, string>;
+    return map[address.toLowerCase()] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function setCachedBasename(address: string, basename: string) {
+  if (globalThis.window === undefined) return;
+  try {
+    const raw = localStorage.getItem(BASENAME_CACHE_KEY);
+    const map = raw ? (JSON.parse(raw) as Record<string, string>) : {};
+    map[address.toLowerCase()] = basename;
+    localStorage.setItem(BASENAME_CACHE_KEY, JSON.stringify(map));
+  } catch {
+    // Ignore cache write failures.
+  }
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number, errorMessage: string): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeoutPromise = new Promise<T>((_, reject) => {
+    timeoutId = setTimeout(reject, ms, new Error(errorMessage));
+  });
+
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  });
+}
+
+async function resolveBasenameOnSepolia(address: string): Promise<string | null> {
+  try {
+    return await withTimeout(
+      publicClientBaseSepolia.getEnsName({ address: address as `0x${string}` }),
+      6000,
+      "Basename resolution timeout",
+    );
+  } catch {
+    return null;
+  }
+}
+
+async function resolveBasenameViaApi(address: string): Promise<string | null> {
+  try {
+    const res = await fetch(`/api/ens/resolve?query=${encodeURIComponent(address)}&type=address`);
+    if (!res.ok) return null;
+
+    const data = (await res.json()) as { ok?: boolean; result?: string | null };
+    return data.ok && data.result ? data.result : null;
+  } catch {
+    return null;
+  }
+}
+
+async function resolveEnsOnMainnet(address: string): Promise<string | null> {
+  try {
+    return await withTimeout(
+      publicClientMainnet.getEnsName({ address: address as `0x${string}` }),
+      7000,
+      "ENS resolution timeout",
+    );
+  } catch {
+    return null;
+  }
+}
+
+async function resolvePreferredName(address: string): Promise<string | null> {
+  const sepoliaBasename = await resolveBasenameOnSepolia(address);
+  if (sepoliaBasename) return sepoliaBasename;
+
+  const apiBasename = await resolveBasenameViaApi(address);
+  if (apiBasename) return apiBasename;
+
+  return resolveEnsOnMainnet(address);
+}
+
 export function useEns(address?: string) {
   const [ensName, setEnsName] = useState<string | null>(null);
   const [ensAvatar, setEnsAvatar] = useState<string | null>(null);
@@ -27,54 +112,26 @@ export function useEns(address?: string) {
     }
 
     let isMounted = true;
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
 
     const resolveEns = async () => {
       setLoading(true);
       try {
-        // Try Base Sepolia Basename first
-        try {
-          const basenamePromise = publicClientBaseSepolia.getEnsName({
-            address: address as `0x${string}`,
-          });
-
-          const basename = await Promise.race([
-            basenamePromise,
-            new Promise<null>((_, reject) =>
-              setTimeout(() => reject(new Error("Basename resolution timeout")), 2500)
-            ),
-          ]);
-
-          if (basename && isMounted) {
-            setEnsName(basename);
-            setLoading(false);
-            return;
-          }
-        } catch {
-          // Basename lookup failed, try mainnet ENS
+        const cachedBasename = getCachedBasename(address);
+        if (cachedBasename && isMounted) {
+          setEnsName(cachedBasename);
         }
 
-        // Try mainnet ENS as fallback
-        const ensPromise = publicClientMainnet.getEnsName({
-          address: address as `0x${string}`,
-        });
-
-        const name = await Promise.race([
-          ensPromise,
-          new Promise<null>((_, reject) =>
-            setTimeout(
-              () => reject(new Error("ENS resolution timeout")),
-              4500
-            )
-          ),
-        ]);
+        const name = await resolvePreferredName(address);
 
         if (!isMounted) return;
 
-        if (name) {
-          setEnsName(name);
+        setEnsName(name ?? cachedBasename ?? null);
 
+        if (name) {
+          setCachedBasename(address, name);
+        }
+
+        if (name) {
           try {
             const avatar = await publicClientMainnet.getEnsAvatar({
               name,
@@ -85,11 +142,14 @@ export function useEns(address?: string) {
           } catch {
             // Avatar resolution failed, continue without it
           }
+        } else {
+          setEnsAvatar(null);
         }
       } catch (error) {
-        // Silently fail - ENS is optional, just show truncated address
+        console.debug("ENS lookup failed", error);
         if (isMounted) {
           setEnsName(null);
+          setEnsAvatar(null);
         }
       } finally {
         if (isMounted) {
@@ -102,8 +162,6 @@ export function useEns(address?: string) {
 
     return () => {
       isMounted = false;
-      controller.abort();
-      clearTimeout(timeoutId);
     };
   }, [address]);
 

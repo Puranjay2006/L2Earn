@@ -11,6 +11,13 @@ export async function GET(req: Request) {
     const years = Number.parseInt(url.searchParams.get("years") || "1", 10);
     const testnet = true;
 
+    if (!Number.isInteger(years) || years <= 0 || years > 10) {
+      return NextResponse.json(
+        { ok: false, error: "years must be an integer between 1 and 10" },
+        { status: 400 }
+      );
+    }
+
     if (!label) {
       return NextResponse.json(
         { ok: false, error: "Missing label parameter" },
