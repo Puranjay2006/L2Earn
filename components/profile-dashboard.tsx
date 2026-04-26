@@ -87,10 +87,15 @@ export function ProfileDashboard() {
     chainId: 1,
     query: { enabled: Boolean(address) },
   });
+  const [mounted, setMounted] = useState(false);
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
   const [localCompletedIds, setLocalCompletedIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!isConnected || !address) {
@@ -164,6 +169,13 @@ export function ProfileDashboard() {
     [completedCampaigns],
   );
 
+  // All unique tags across every available campaign, with totals
+  const tagTotals = useMemo(() => {
+    const totals: Record<string, number> = {};
+    CAMPAIGNS.forEach((c) => c.tags.forEach((t) => { totals[t] = (totals[t] ?? 0) + 1; }));
+    return totals;
+  }, []);
+
   const sortedTags = useMemo(
     () =>
       Object.entries(mergedTagCounts)
@@ -191,6 +203,17 @@ export function ProfileDashboard() {
       }, {}),
     [sortedTags],
   );
+
+  if (!mounted) {
+    return (
+      <div className="flex min-h-[360px] items-center justify-center">
+        <div className="flex items-center gap-3 text-muted-foreground">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          Loading passport...
+        </div>
+      </div>
+    );
+  }
 
   if (!isConnected) {
     return (
@@ -410,15 +433,25 @@ export function ProfileDashboard() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <Tags className="h-5 w-5 text-primary" />
-              Skill Tags
+              Skills Distribution
             </CardTitle>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Topics you have covered across completed courses
+            </p>
           </CardHeader>
           <CardContent>
             {sortedTags.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No tags yet.</p>
+              <div className="rounded-lg border border-dashed border-border/60 p-6 text-center">
+                <Tags className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
+                <p className="text-sm font-medium text-foreground">No skills yet</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Complete a course to start building your skill profile.
+                </p>
+              </div>
             ) : (
-              <div className="space-y-4">
-                <ChartContainer config={tagChartConfig} className="mx-auto aspect-square h-[240px]">
+              <div className="space-y-5">
+                {/* Donut chart */}
+                <ChartContainer config={tagChartConfig} className="mx-auto aspect-square h-[200px]">
                   <PieChart>
                     <ChartTooltip
                       cursor={false}
@@ -428,9 +461,9 @@ export function ProfileDashboard() {
                       data={tagChartData}
                       dataKey="count"
                       nameKey="tag"
-                      innerRadius={52}
-                      outerRadius={88}
-                      paddingAngle={2}
+                      innerRadius={48}
+                      outerRadius={80}
+                      paddingAngle={3}
                     >
                       {tagChartData.map((entry) => (
                         <Cell key={entry.tag} fill={entry.fill} />
@@ -438,18 +471,64 @@ export function ProfileDashboard() {
                     </Pie>
                   </PieChart>
                 </ChartContainer>
-                <div className="flex flex-wrap gap-2">
-                  {sortedTags.map(([tag, count], index) => (
-                    <Badge key={tag} variant="outline" className="gap-1">
-                      <span
-                        className="h-2 w-2 rounded-sm"
-                        style={{ backgroundColor: tagColors[index % tagColors.length] }}
-                      />
-                      {tag}
-                      <span className="text-muted-foreground">x{count}</span>
-                    </Badge>
-                  ))}
+
+                {/* Progress bars per skill */}
+                <div className="space-y-3">
+                  {sortedTags.map(([tag, count], index) => {
+                    const total = tagTotals[tag] ?? 1;
+                    const pct = Math.round((count / total) * 100);
+                    const color = tagColors[index % tagColors.length];
+                    return (
+                      <div key={tag} className="space-y-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span
+                              className="h-2.5 w-2.5 rounded-sm flex-shrink-0"
+                              style={{ backgroundColor: color }}
+                            />
+                            <span className="text-sm font-medium text-foreground truncate">
+                              {tag}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <span className="text-xs text-muted-foreground">
+                              {count}/{total}
+                            </span>
+                            <Badge
+                              variant="outline"
+                              className="text-xs px-1.5 py-0 h-5"
+                              style={{ color, borderColor: `${color}40` }}
+                            >
+                              {pct}%
+                            </Badge>
+                          </div>
+                        </div>
+                        {/* Progress track */}
+                        <div className="h-1.5 w-full rounded-full bg-muted/50 overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all duration-500"
+                            style={{ width: `${pct}%`, backgroundColor: color }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
+
+                {/* Overflow tags not in top 6 */}
+                {Object.keys(mergedTagCounts).length > 6 && (
+                  <div className="pt-1 flex flex-wrap gap-1.5">
+                    {Object.entries(mergedTagCounts)
+                      .sort((a, b) => b[1] - a[1])
+                      .slice(6)
+                      .map(([tag, count]) => (
+                        <Badge key={tag} variant="outline" className="text-xs gap-1">
+                          {tag}
+                          <span className="text-muted-foreground">×{count}</span>
+                        </Badge>
+                      ))}
+                  </div>
+                )}
               </div>
             )}
           </CardContent>

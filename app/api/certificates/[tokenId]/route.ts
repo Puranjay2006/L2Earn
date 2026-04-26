@@ -41,14 +41,14 @@ export async function GET(
   const courseId = claim?.campaignId ?? fallbackCampaignId!;
   const campaign = getCampaign(courseId);
   const pdf = createCertificatePdf({
-    wallet: claim?.credential.wallet ?? userAddress,
+    wallet: claim?.credential?.wallet ?? userAddress,
     courseId,
     courseTitle: campaign?.title ?? courseId,
     brand: campaign?.brand ?? "L2Earn",
-    score: claim?.credential.score ?? (Number.isInteger(fallbackScore) ? fallbackScore : 0),
-    total: claim?.credential.total ?? (Number.isInteger(fallbackTotal) ? fallbackTotal : 0),
+    score: claim?.credential?.score ?? (Number.isInteger(fallbackScore) ? fallbackScore : 0),
+    total: claim?.credential?.total ?? (Number.isInteger(fallbackTotal) ? fallbackTotal : 0),
     tokenId: claim?.tokenId ?? id,
-    mintTx: claim?.txHash ?? fallbackMintTx!,
+    mintTx: claim?.txHash ?? claim?.mintTx ?? fallbackMintTx!,
   });
 
   return new NextResponse(new Uint8Array(pdf), {

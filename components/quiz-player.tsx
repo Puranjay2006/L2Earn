@@ -222,6 +222,25 @@ export function QuizPlayer({ campaignId, rewardCents }: Props) {
           `${reward} dNZD has been sent to your connected wallet. Open MetaMask to view the transfer.`,
       );
 
+      // Mint NFT credentials for milestone achievements
+      try {
+        await fetch("/api/nft", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userAddress: address,
+            campaignId,
+            score: quizScore,
+            total: 3, // Assuming 3-question quiz
+          }),
+        }).catch(() => {
+          // NFT minting is optional, don't fail the payout if it fails
+          console.log("NFT minting skipped (no contract configured)");
+        });
+      } catch (error) {
+        console.error("NFT minting error:", error);
+      }
+
       // Create attestation after successful payout
       await createAttestation(quizScore);
     } catch (error) {

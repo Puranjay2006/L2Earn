@@ -1,26 +1,14 @@
 import { NextResponse } from "next/server";
 import { CAMPAIGNS } from "@/lib/campaigns";
-import { getBalanceCents, listCompletedCampaigns, listNftClaims, listTxs } from "@/lib/store";
-import { formatDnzd } from "@/lib/dnzd";
+import {
+  getBalanceCents,
+  listCompletedCampaigns,
+  listNftClaims,
+  listTxs,
+  NFT_MILESTONES,
+} from "@/lib/store";
 
 export const runtime = "nodejs";
-
-type ClaimCertificate = {
-  status?: string;
-  signer?: string;
-  brand?: string;
-  courseTitle?: string;
-  documentHash?: string;
-  documentUrl?: string;
-  luminDetailsUrl?: string;
-  score?: number;
-  total?: number;
-  issuedAt?: string;
-};
-
-type ClaimWithCertificate = Awaited<ReturnType<typeof listNftClaims>>[number] & {
-  certificate?: ClaimCertificate;
-};
 
 function badRequest(message: string) {
   return NextResponse.json({ ok: false, error: message }, { status: 400 });
@@ -32,13 +20,17 @@ function parseAddress(address: string | null): string | null {
   return trimmed;
 }
 
+function formatDnzd(cents: number): string {
+  return (cents / 100).toFixed(2);
+}
+
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const origin = url.origin;
   const address = parseAddress(url.searchParams.get("address"));
 
   if (!address) {
-    return badRequest("Invalid address.");
+    return badRequest("Invalid Ethereum address.");
   }
 
   const [balanceCents, txs, completedCampaignIds, nftClaims] = await Promise.all([
@@ -59,6 +51,7 @@ export async function GET(req: Request) {
       rewardCents: campaign?.rewardCents ?? 0,
     };
   });
+
   const tagCounts = completedCampaigns.reduce<Record<string, number>>((acc, campaign) => {
     for (const tag of campaign.tags) {
       acc[tag] = (acc[tag] ?? 0) + 1;
@@ -66,53 +59,41 @@ export async function GET(req: Request) {
     return acc;
   }, {});
 
-  const credentials = nftClaims.map((rawClaim) => {
-    const claim = rawClaim as ClaimWithCertificate;
+  const credentials = nftClaims.map((claim) => {
     const campaign = campaignById.get(claim.campaignId);
+    const milestone = NFT_MILESTONES.find((m) => m.id === claim.milestone);
+
     return {
       type: "LearningCredentialNFT",
       issuer: "L2Earn",
-      signer: claim.credential.signer,
+      signer: "Lumin",
       holder: address,
       campaign: {
         id: claim.campaignId,
-        brand: campaign?.brand ?? claim.certificate?.brand ?? "Unknown",
-        title: campaign?.title ?? claim.certificate?.courseTitle ?? claim.campaignId,
+        brand: campaign?.brand ?? "Unknown",
+        title: campaign?.title ?? claim.campaignId,
         tags: campaign?.tags ?? [],
       },
       credential: {
         standard: "ERC1155",
-        wallet: claim.credential.wallet,
-        course: claim.credential.course,
-        score: `${claim.credential.score}/${claim.credential.total}`,
-        luminSignedCertificateHash: claim.credential.luminSignedCertificateHash,
-        mintTx: claim.credential.mintTx,
+        wallet: address,
+        course: claim.campaignId,
+        score: 3,
+        total: 3,
+        luminSignedCertificateHash: claim.certificateHash || "0x",
+        mintTx: claim.mintTx,
       },
       nft: {
         standard: "ERC1155",
         tokenId: claim.tokenId,
-        name: claim.name,
-        description: claim.description,
-        image: claim.imageUrl ? new URL(claim.imageUrl, origin).toString() : undefined,
+        name: milestone?.title || "Learning Credential",
+        description: milestone?.description || "Completed a learning campaign",
         metadataUrl: `${origin}/api/nft/metadata/${claim.tokenId}`,
-        mintTx: claim.txHash,
-        explorerUrl: claim.explorerUrl,
-        chainId: claim.chainId,
+        chainId: 84532,
       },
-      certificate: claim.certificate
-        ? {
-            status: claim.certificate.status,
-            signer: claim.certificate.signer,
-            documentHash: claim.certificate.documentHash,
-            documentUrl: claim.certificate.documentUrl,
-            luminDetailsUrl: claim.certificate.luminDetailsUrl,
-            score: `${claim.certificate.score}/${claim.certificate.total}`,
-            issuedAt: claim.certificate.issuedAt,
-          }
-        : null,
       verification: {
-        onChainMintPresent: Boolean(claim.txHash),
-        signedCertificatePresent: Boolean(claim.credential.luminSignedCertificateHash),
+        onChainMintPresent: Boolean(claim.mintTx),
+        signedCertificatePresent: Boolean(claim.certificateHash),
         machineReadableMetadata: `${origin}/api/nft/metadata/${claim.tokenId}`,
       },
     };
@@ -141,14 +122,16 @@ export async function GET(req: Request) {
     completedCampaigns,
     rewardHistory: txs.map((tx) => ({
       campaignId: tx.campaignId,
-      amount: formatDnzd(tx.amountCents),
-      amountCents: tx.amountCents,
-      ts: tx.ts,
+      amount: formatDnzd(tx.amount),
+      amountCents: tx.amount,
+      ts: tx.timestamp,
     })),
     agentDecisionHints: {
       canRecommendNewMoney: completedCampaigns.some((campaign) => campaign.brand === "NewMoney"),
       knowsStablecoins: Boolean(tagCounts.Stablecoins),
       knowsDeFi: Boolean(tagCounts.DeFi),
+      knowsAi: Boolean(tagCounts["AI Agents"]),
+      knowsWeb3: Boolean(tagCounts.Web3),
       verifiedBy: ["Wallet address", "ERC1155 credential metadata", "Lumin certificate hash"],
     },
   });

@@ -21,7 +21,7 @@ export interface UserData {
   badges: string[];
 }
 
-// NFT & Milestone types (from estellefinal)
+// NFT & Milestone types
 export interface NftClaim {
   campaignId: string;
   milestone: string; // e.g., "first-course", "5-courses", "10-courses"
@@ -29,6 +29,34 @@ export interface NftClaim {
   mintTx: string;
   timestamp: number;
   certificateHash?: string;
+  // Extended fields saved from RecordedNftClaim (optional for backward compat)
+  name?: string;
+  description?: string;
+  threshold?: number;
+  explorerUrl?: string;
+  txHash?: string;
+  ts?: number;
+  chainId?: number;
+  credential?: {
+    type: string;
+    issuer: string;
+    signer: string;
+    wallet: string;
+    course: string;
+    score: number;
+    total: number;
+    luminSignedCertificateHash: string;
+    mintTx: string;
+  };
+  certificate?: {
+    status: string;
+    signer?: string;
+    documentHash?: string;
+    documentUrl?: string;
+    luminDetailsUrl?: string;
+    signatureRequestId?: string;
+    error?: string;
+  };
 }
 
 export const NFT_MILESTONES = [
@@ -80,10 +108,11 @@ function saveStore(data: StoreData): void {
 }
 
 export function getUser(address: string): UserData {
+  const key = address.toLowerCase();
   const store = ensureStoreExists();
-  if (!store.users[address]) {
-    store.users[address] = {
-      address,
+  if (!store.users[key]) {
+    store.users[key] = {
+      address: key,
       balance: 0,
       completedCampaigns: [],
       txs: [],
@@ -93,7 +122,7 @@ export function getUser(address: string): UserData {
     };
     saveStore(store);
   }
-  return store.users[address];
+  return store.users[key];
 }
 
 export function getBalance(address: string): number {
@@ -105,10 +134,11 @@ export function getBalanceCents(address: string): number {
 }
 
 export function creditUser(
-  address: string,
+  addressRaw: string,
   campaignId: string,
   amount: number
 ): boolean {
+  const address = addressRaw.toLowerCase();
   const store = ensureStoreExists();
   const user = store.users[address] || getUser(address);
 
@@ -179,49 +209,197 @@ export function listCompletedCampaigns(address: string): string[] {
 }
 
 export function listNftClaims(address: string): NftClaim[] {
+  const key = address.toLowerCase();
   const store = ensureStoreExists();
-  return store.nftClaims[address] || [];
+  return store.nftClaims[key] || [];
 }
 
 export function recordNftClaim(address: string, claim: NftClaim): void {
+  const key = address.toLowerCase();
   const store = ensureStoreExists();
-  if (!store.nftClaims[address]) {
-    store.nftClaims[address] = [];
+  if (!store.nftClaims[key]) {
+    store.nftClaims[key] = [];
   }
-  store.nftClaims[address].push(claim);
+  store.nftClaims[key].push(claim);
   saveStore(store);
 }
 
-export function getPendingNftMilestones(address: string): string[] {
-  const user = getUser(address);
-  const claims = listNftClaims(address);
-  const claimedMilestones = new Set(claims.map(c => c.milestone));
+export interface MilestoneWithMetadata {
+  id: string;
+  name: string;
+  description: string;
+  imageUrl?: string;
+  threshold: number;
+  tokenId: number;
+}
 
-  const completedCount = user.completedCampaigns.length;
-  const pending: string[] = [];
+export function getPendingNftMilestones(
+  address: string,
+  _campaignId?: string
+): {
+  ok: boolean;
+  reason?: string;
+  pendingMilestones: MilestoneWithMetadata[];
+  completedCount: number;
+  completedCampaigns: string[];
+} {
+  try {
+    const user = getUser(address);
+    const claims = listNftClaims(address);
+    const claimedMilestones = new Set(claims.map(c => c.milestone));
 
-  for (const milestone of NFT_MILESTONES) {
-    if (!claimedMilestones.has(milestone.id) && completedCount >= milestone.threshold) {
-      pending.push(milestone.id);
+    const completedCount = user.completedCampaigns.length;
+    const pendingMilestones: MilestoneWithMetadata[] = [];
+
+    for (let i = 0; i < NFT_MILESTONES.length; i++) {
+      const milestone = NFT_MILESTONES[i];
+      if (!claimedMilestones.has(milestone.id) && completedCount >= milestone.threshold) {
+        pendingMilestones.push({
+          id: milestone.id,
+          name: milestone.title,
+          description: milestone.description,
+          threshold: milestone.threshold,
+          tokenId: 1000 + i + 1, // Generate unique tokenIds
+        });
+      }
     }
-  }
 
-  return pending;
+    return {
+      ok: true,
+      pendingMilestones,
+      completedCount,
+      completedCampaigns: user.completedCampaigns,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      reason: error instanceof Error ? error.message : "Unknown error",
+      pendingMilestones: [],
+      completedCount: 0,
+      completedCampaigns: [],
+    };
+  }
+}
+
+export interface RecordedNftClaim {
+  campaignId: string;
+  holder: string;
+  tokenId: number;
+  name: string;
+  description: string;
+  imageUrl?: string;
+  threshold: number;
+  completedCount: number;
+  credential: {
+    type: string;
+    issuer: string;
+    signer: string;
+    wallet: string;
+    course: string;
+    score: number;
+    total: number;
+    luminSignedCertificateHash: string;
+    mintTx: string;
+  };
+  certificate?: {
+    status: string;
+    signer?: string;
+    documentHash?: string;
+    error?: string;
+  };
+  txHash: string;
+  chainId: number;
+  explorerUrl: string;
+  ts: number;
 }
 
 export function recordCourseCompletionAndNftClaims(
-  address: string,
+  addressRaw: string,
   campaignId: string,
-  amount: number,
-  nftClaimsToRecord: NftClaim[] = []
-): boolean {
-  const success = creditUser(address, campaignId, amount);
+  completedCampaigns: string[],
+  mintedClaims: RecordedNftClaim[] = []
+): {
+  ok: boolean;
+  courseCompletionRecorded: boolean;
+  nftClaimsRecorded: number;
+  claims?: RecordedNftClaim[];
+} {
+  try {
+    const address = addressRaw.toLowerCase();
+    const store = ensureStoreExists();
+    const user = store.users[address] || getUser(address);
 
-  if (success && nftClaimsToRecord.length > 0) {
-    for (const claim of nftClaimsToRecord) {
-      recordNftClaim(address, claim);
+    // Course completion — only record if not already done.
+    // creditUser (called by the payout route) may have already recorded this,
+    // so we must NOT bail out here — we still need to record the NFT claims below.
+    const alreadyCompleted = user.completedCampaigns.includes(campaignId);
+    let courseCompletionRecorded = false;
+
+    if (!alreadyCompleted) {
+      user.completedCampaigns.push(campaignId);
+      user.lastCompletionDate = Date.now();
+
+      // Update streak
+      const today = Math.floor(Date.now() / (1000 * 60 * 60 * 24));
+      const lastDate = user.lastCompletionDate
+        ? Math.floor(user.lastCompletionDate / (1000 * 60 * 60 * 24))
+        : today - 1;
+
+      if (today === lastDate + 1) {
+        user.streak++;
+      } else if (today !== lastDate) {
+        user.streak = 1;
+      }
+
+      courseCompletionRecorded = true;
     }
-  }
 
-  return success;
+    // Always record NFT claims — even if the course was already marked completed
+    // by an earlier creditUser call (e.g. from the payout route).
+    if (mintedClaims.length > 0) {
+      if (!store.nftClaims[address]) {
+        store.nftClaims[address] = [];
+      }
+      // Avoid double-storing the same tokenId
+      const storedTokenIds = new Set(store.nftClaims[address].map((c) => c.tokenId));
+      for (const claim of mintedClaims) {
+        if (storedTokenIds.has(claim.tokenId)) continue;
+        store.nftClaims[address].push({
+          campaignId: claim.campaignId,
+          milestone: claim.name,
+          tokenId: claim.tokenId,
+          mintTx: claim.txHash,
+          timestamp: claim.ts,
+          certificateHash: claim.credential.luminSignedCertificateHash,
+          // Extended fields
+          name: claim.name,
+          description: claim.description,
+          threshold: claim.threshold,
+          explorerUrl: claim.explorerUrl,
+          txHash: claim.txHash,
+          ts: claim.ts,
+          chainId: claim.chainId,
+          credential: claim.credential,
+          certificate: claim.certificate,
+        });
+        storedTokenIds.add(claim.tokenId);
+      }
+    }
+
+    store.users[address] = user;
+    saveStore(store);
+
+    return {
+      ok: true,
+      courseCompletionRecorded,
+      nftClaimsRecorded: mintedClaims.length,
+      claims: mintedClaims,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      courseCompletionRecorded: false,
+      nftClaimsRecorded: 0,
+    };
+  }
 }

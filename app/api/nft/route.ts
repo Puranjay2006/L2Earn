@@ -7,7 +7,7 @@ import {
   getPendingNftMilestones,
   listCompletedCampaigns,
   listNftClaims,
-  type NftClaim,
+  type RecordedNftClaim,
   NFT_MILESTONES,
   recordCourseCompletionAndNftClaims,
 } from "@/lib/store";
@@ -88,10 +88,10 @@ export async function POST(req: Request) {
 
   const plan = await getPendingNftMilestones(userAddress, campaignId);
   if (!plan.ok) {
-    return badRequest(plan.reason);
+    return badRequest(plan.reason ?? "Unknown error");
   }
 
-  const mintedClaims: NftClaim[] = [];
+  const mintedClaims: RecordedNftClaim[] = [];
   let mintError: string | null = null;
   try {
     for (const milestone of plan.pendingMilestones) {
@@ -155,21 +155,21 @@ export async function POST(req: Request) {
   if (mintError) {
     return NextResponse.json(
       {
+        ...claimResult,
         ok: false,
         error: `NFT mint failed: ${mintError}`,
         courseCompletionRecorded: true,
         milestones: NFT_MILESTONES,
         completedCampaigns: plan.completedCampaigns,
-        ...claimResult,
       },
       { status: 502 },
     );
   }
 
   return NextResponse.json({
+    ...claimResult,
     ok: true,
     milestones: NFT_MILESTONES,
     completedCampaigns: plan.completedCampaigns,
-    ...claimResult,
   });
 }

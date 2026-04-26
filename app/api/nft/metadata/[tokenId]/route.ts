@@ -11,17 +11,19 @@ export async function GET(
   const id = /^[0-9]+$/.test(tokenId)
     ? Number.parseInt(tokenId, 10)
     : Number.parseInt(tokenId.replace(/^0x/, ""), 16);
-  const milestone = NFT_MILESTONES.find((item) => item.tokenId === id);
+  // NFT_MILESTONES uses tokenId = 1001, 1002, … (index + 1001)
+  const milestone = NFT_MILESTONES.find((_m, i) => 1000 + i + 1 === id);
 
   if (!milestone) {
     return NextResponse.json({ error: "Unknown tokenId." }, { status: 404 });
   }
 
   const origin = new URL(req.url).origin;
-  const image = new URL(milestone.imageUrl, origin).toString();
+  // imageUrl is not in the milestone definition — fall back to a placeholder
+  const image = `${origin}/nft-placeholder.png`;
 
   return NextResponse.json({
-    name: milestone.name,
+    name: milestone.title,
     description: milestone.description,
     image,
     external_url: `${origin}/profile`,

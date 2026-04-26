@@ -21,7 +21,7 @@ export default function CampaignsPage() {
               Pick a level. Pass the quiz. Get paid.
             </h1>
             <p className="text-lg text-muted-foreground">
-              11 campaigns across Easy, Medium, and Hard. Each rewards you in dNZD when you pass
+              12 campaigns across Easy, Medium, and Hard. Filter by difficulty or skill — each rewards you in dNZD when you pass
               an AI-tutored quiz. Connect a wallet first so we know where to send the payout.
             </p>
           </header>

@@ -1,12 +1,17 @@
 import { useEffect, useState } from "react";
 import { createPublicClient, http } from "viem";
-import { mainnet } from "viem/chains";
+import { mainnet, baseSepolia } from "viem/chains";
 
-const publicClient = createPublicClient({
+const publicClientMainnet = createPublicClient({
   chain: mainnet,
   transport: http(
     process.env.NEXT_PUBLIC_RPC_URL || "https://eth-mainnet.public.blastapi.io"
   ),
+});
+
+const publicClientBaseSepolia = createPublicClient({
+  chain: baseSepolia,
+  transport: http("https://sepolia.base.org"),
 });
 
 export function useEns(address?: string) {
@@ -28,8 +33,30 @@ export function useEns(address?: string) {
     const resolveEns = async () => {
       setLoading(true);
       try {
-        // Wrap in timeout promise
-        const ensPromise = publicClient.getEnsName({
+        // Try Base Sepolia Basename first
+        try {
+          const basenamePromise = publicClientBaseSepolia.getEnsName({
+            address: address as `0x${string}`,
+          });
+
+          const basename = await Promise.race([
+            basenamePromise,
+            new Promise<null>((_, reject) =>
+              setTimeout(() => reject(new Error("Basename resolution timeout")), 2500)
+            ),
+          ]);
+
+          if (basename && isMounted) {
+            setEnsName(basename);
+            setLoading(false);
+            return;
+          }
+        } catch {
+          // Basename lookup failed, try mainnet ENS
+        }
+
+        // Try mainnet ENS as fallback
+        const ensPromise = publicClientMainnet.getEnsName({
           address: address as `0x${string}`,
         });
 
@@ -49,7 +76,7 @@ export function useEns(address?: string) {
           setEnsName(name);
 
           try {
-            const avatar = await publicClient.getEnsAvatar({
+            const avatar = await publicClientMainnet.getEnsAvatar({
               name,
             });
             if (avatar && isMounted) {
