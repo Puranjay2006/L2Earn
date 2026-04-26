@@ -48,6 +48,15 @@ function stableHash(input: unknown) {
   return createHash("sha256").update(JSON.stringify(input)).digest("hex");
 }
 
+function cleanLuminError(status: number, message: string | undefined) {
+  const text = message?.trim() ?? "";
+  if (status === 503 || /<html|nginx|service temporarily unavailable/i.test(text)) {
+    return "Lumin eSign is temporarily unavailable. Generated PDF is available.";
+  }
+  if (!text) return `Lumin eSign request failed with HTTP ${status}. Generated PDF is available.`;
+  return text.length > 240 ? `${text.slice(0, 240)}...` : text;
+}
+
 function getApiBaseUrl() {
   return (process.env.LUMIN_API_BASE_URL ?? "https://api-sandbox.luminpdf.com/v1").replace(/\/$/, "");
 }
@@ -201,11 +210,12 @@ export async function createLuminLearningCertificate(
     }
 
     if (!res.ok) {
+      const rawError = payload.message ?? JSON.stringify(payload.error ?? payload);
       return {
         status: "error",
         signer: "Lumin",
         documentHash: fallbackHash,
-        error: payload.message ?? JSON.stringify(payload.error ?? payload) ?? `HTTP ${res.status}`,
+        error: cleanLuminError(res.status, rawError),
       };
     }
 

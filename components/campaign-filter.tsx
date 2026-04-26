@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Search, X } from "lucide-react";
 import { useAccount } from "wagmi";
+import { useAppKitAccount } from "@reown/appkit/react";
 import { CampaignCard } from "@/components/campaign-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +12,10 @@ import type { Campaign } from "@/lib/campaigns";
 import { cn } from "@/lib/utils";
 
 export function CampaignFilter({ campaigns }: { campaigns: Campaign[] }) {
-  const { address, isConnected } = useAccount();
+  const { address: wagmiAddress, isConnected: wagmiConnected } = useAccount();
+  const { address: appKitAddress, isConnected: appKitConnected } = useAppKitAccount({ namespace: "eip155" });
+  const address = wagmiAddress ?? (appKitAddress as `0x${string}` | undefined);
+  const isConnected = wagmiConnected || appKitConnected;
   const [activeTag, setActiveTag] = useState("All");
   const [query, setQuery] = useState("");
   const [completedCampaignIds, setCompletedCampaignIds] = useState<Set<string>>(new Set());

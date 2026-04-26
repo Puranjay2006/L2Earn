@@ -2,13 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { useAccount } from "wagmi";
+import { useAppKitAccount } from "@reown/appkit/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDnzd } from "@/lib/dnzd";
 import { getWallet, WALLET_UPDATED_EVENT, type WalletTx } from "@/lib/mock-wallet";
 import { Coins, History, Loader2 } from "lucide-react";
 
 export function DnzdBalance() {
-  const { address, isConnected } = useAccount();
+  const { address: wagmiAddress, isConnected: wagmiConnected } = useAccount();
+  const { address: appKitAddress, isConnected: appKitConnected } = useAppKitAccount({ namespace: "eip155" });
+  const address = wagmiAddress ?? (appKitAddress as `0x${string}` | undefined);
+  const isConnected = wagmiConnected || appKitConnected;
   const [balanceCents, setBalanceCents] = useState<number | null>(null);
   const [txs, setTxs] = useState<WalletTx[]>([]);
   const [loading, setLoading] = useState(false);

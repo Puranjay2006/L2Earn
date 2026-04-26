@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import { createPublicClient, createWalletClient, erc20Abi, formatUnits, http, parseUnits } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { base, baseSepolia } from "viem/chains";
+import { getCampaign } from "@/lib/campaigns";
 import { getClaim, markClaim } from "@/lib/payout-claims";
+import { credit, hasClaimed } from "@/lib/store";
 
 export const runtime = "nodejs";
 
@@ -37,13 +39,17 @@ export async function POST(req: Request) {
   if (!campaignId) {
     return badRequest("campaignId is required.");
   }
+  const campaign = getCampaign(campaignId);
+  if (!campaign) {
+    return badRequest("Invalid campaignId.");
+  }
 
   const privateKey = process.env.MASTER_WALLET_PRIVATE_KEY?.trim();
   const configuredMasterAddress =
     process.env.MASTER_WALLET_ADDRESS?.trim() ?? "0xC7Fd206cC5534700B06A760CeAd2A0602aF036b7";
   const tokenAddress = process.env.NZD_TOKEN_ADDRESS?.trim() ?? "0x63ee4b77d3912DC7bCe711c3BE7bF12D532F1853";
   const rpcUrl = process.env.EVM_RPC_URL?.trim() ?? process.env.NEXT_PUBLIC_BASE_RPC_URL?.trim() ?? "";
-  const payoutAmount = process.env.NZD_PAYOUT_AMOUNT?.trim() ?? "5";
+  const payoutAmount = (campaign.rewardCents / 100).toFixed(2);
   const fallbackTokenDecimals = Number.parseInt(process.env.NZD_TOKEN_DECIMALS?.trim() ?? "18", 10);
   const chainId = Number.parseInt(process.env.EVM_CHAIN_ID?.trim() ?? "84532", 10);
 
@@ -77,6 +83,15 @@ export async function POST(req: Request) {
           ok: false,
           error: "Reward already claimed for this campaign.",
           txHash: existing.txHash,
+        },
+        { status: 409 },
+      );
+    }
+    if (await hasClaimed(userAddress, campaignId)) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Reward already recorded for this campaign.",
         },
         { status: 409 },
       );
@@ -151,10 +166,14 @@ export async function POST(req: Request) {
     }
 
     await markClaim(campaignId, userAddress, txHash);
+    const creditResult = await credit(userAddress, campaignId, campaign.rewardCents);
 
     return NextResponse.json({
       ok: true,
       txHash,
+      amount: payoutAmount,
+      amountCents: campaign.rewardCents,
+      balanceCents: creditResult.ok ? creditResult.balanceCents : undefined,
       message: `Sent ${payoutAmount} NZD from master wallet to ${userAddress}.`,
     });
   } catch (error) {

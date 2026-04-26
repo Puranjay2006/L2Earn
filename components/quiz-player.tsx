@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useAccount, useChainId, useEnsName } from "wagmi";
+import { useAppKitAccount } from "@reown/appkit/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -11,8 +12,6 @@ import { getCampaign } from "@/lib/campaigns";
 import { rememberLocalCourseCompletion } from "@/lib/client-learning-store";
 import { Award, CheckCircle2, XCircle, Sparkles, Wallet, Loader2, Coins } from "lucide-react";
 import Link from "next/link";
-
-const NZD_SEND_AMOUNT = "5";
 
 const EXPLORER_TX_BASE: Record<number, string> = {
   1: "https://etherscan.io/tx/",
@@ -68,7 +67,10 @@ type NftClaim = {
 };
 
 export function QuizPlayer({ campaignId, rewardCents }: Props) {
-  const { address, isConnected } = useAccount();
+  const { address: wagmiAddress, isConnected: wagmiConnected } = useAccount();
+  const { address: appKitAddress, isConnected: appKitConnected } = useAppKitAccount({ namespace: "eip155" });
+  const address = wagmiAddress ?? (appKitAddress as `0x${string}` | undefined);
+  const isConnected = wagmiConnected || appKitConnected;
   const chainId = useChainId();
   const { data: ensName } = useEnsName({
     address,
@@ -230,6 +232,7 @@ export function QuizPlayer({ campaignId, rewardCents }: Props) {
       const payload = (await res.json()) as {
         ok?: boolean;
         txHash?: string;
+        amount?: string;
         message?: string;
         error?: string;
       };
@@ -244,7 +247,7 @@ export function QuizPlayer({ campaignId, rewardCents }: Props) {
       }
       setOnChainMessage(
         payload.message ??
-          `${NZD_SEND_AMOUNT} dNZD has been sent to your connected wallet. Open MetaMask to view the transfer.`,
+          `${payload.amount ?? reward} dNZD has been sent to your connected wallet. Open MetaMask to view the transfer.`,
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

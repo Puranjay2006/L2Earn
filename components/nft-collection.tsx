@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Award, ExternalLink, Loader2 } from "lucide-react";
 import { useAccount } from "wagmi";
+import { useAppKitAccount } from "@reown/appkit/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
@@ -38,7 +39,10 @@ type NftResponse = {
 };
 
 export function NftCollection() {
-  const { address, isConnected } = useAccount();
+  const { address: wagmiAddress, isConnected: wagmiConnected } = useAccount();
+  const { address: appKitAddress, isConnected: appKitConnected } = useAppKitAccount({ namespace: "eip155" });
+  const address = wagmiAddress ?? (appKitAddress as `0x${string}` | undefined);
+  const isConnected = wagmiConnected || appKitConnected;
   const [claims, setClaims] = useState<NftClaim[]>([]);
   const [completedCount, setCompletedCount] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -163,8 +167,8 @@ export function NftCollection() {
                           <ExternalLink className="h-3 w-3" />
                         </a>
                         <p className="text-muted-foreground">
-                          Lumin certificate: {claim.certificate.status.replaceAll("_", " ")}
-                          {claim.certificate.error ? ` (${claim.certificate.error})` : ""}
+                          {claim.certificate.error ??
+                            `Lumin certificate: ${claim.certificate.status.replaceAll("_", " ")}`}
                         </p>
                       </div>
                     )}

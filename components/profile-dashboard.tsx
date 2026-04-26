@@ -5,6 +5,7 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { Award, BookOpenCheck, Coins, ExternalLink, Loader2, Tags, Wallet } from "lucide-react";
 import { useAccount, useEnsName } from "wagmi";
+import { useAppKitAccount } from "@reown/appkit/react";
 import { Cell, Pie, PieChart } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -81,7 +82,10 @@ const tagColors = [
 ];
 
 export function ProfileDashboard() {
-  const { address, isConnected } = useAccount();
+  const { address: wagmiAddress, isConnected: wagmiConnected } = useAccount();
+  const { address: appKitAddress, isConnected: appKitConnected } = useAppKitAccount({ namespace: "eip155" });
+  const address = wagmiAddress ?? (appKitAddress as `0x${string}` | undefined);
+  const isConnected = wagmiConnected || appKitConnected;
   const { data: ensName } = useEnsName({
     address,
     chainId: 1,
@@ -120,7 +124,23 @@ export function ProfileDashboard() {
       } catch (loadError) {
         if (!cancelled) {
           const message = loadError instanceof Error ? loadError.message : String(loadError);
-          setError(message);
+          const localIds = readLocalLearningState(walletAddress).completedCampaignIds;
+          if (localIds.length > 0) {
+            setProfile((current) => current ?? {
+              ok: true,
+              address: walletAddress,
+              balanceCents: 0,
+              txs: [],
+              completedCampaigns: [],
+              completedCount: localIds.length,
+              totalCampaigns: CAMPAIGNS.length,
+              nftClaims: [],
+              tagCounts: {},
+            });
+            setError(null);
+          } else {
+            setError(message);
+          }
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -229,7 +249,7 @@ export function ProfileDashboard() {
   }
 
   const completedCount = completedCampaigns.length;
-  const totalCampaigns = profile?.totalCampaigns ?? 0;
+  const totalCampaigns = profile?.totalCampaigns ?? CAMPAIGNS.length;
   const progress = totalCampaigns > 0 ? Math.round((completedCount / totalCampaigns) * 100) : 0;
   const nftClaims = profile?.nftClaims ?? [];
   const txs = profile?.txs ?? [];
@@ -367,8 +387,8 @@ export function ProfileDashboard() {
                               <ExternalLink className="h-3 w-3" />
                             </a>
                             <p className="text-muted-foreground">
-                              Lumin certificate: {claim.certificate.status.replaceAll("_", " ")}
-                              {claim.certificate.error ? ` (${claim.certificate.error})` : ""}
+                              {claim.certificate.error ??
+                                `Lumin certificate: ${claim.certificate.status.replaceAll("_", " ")}`}
                             </p>
                           </div>
                         )}

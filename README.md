@@ -47,11 +47,11 @@ EVM_RPC_URL=https://sepolia.base.org
 EVM_CHAIN_ID=84532
 NZD_TOKEN_ADDRESS=0x63ee4b77d3912DC7bCe711c3BE7bF12D532F1853
 NZD_TOKEN_DECIMALS=18
-NZD_PAYOUT_AMOUNT=5
 ```
 
 Without these variables, `/api/payout` will return a configuration error and no on-chain transfer is sent.
 `MASTER_WALLET_PRIVATE_KEY` must derive to `MASTER_WALLET_ADDRESS`, otherwise payout calls are rejected.
+Payout amount is read from each campaign's `rewardCents`, so courses with different rewards transfer different dNZD amounts.
 
 ## Learning Credential NFT config
 
