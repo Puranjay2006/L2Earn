@@ -8,7 +8,7 @@ export async function GET(req: Request) {
     const url = new URL(req.url);
     const query = url.searchParams.get("query");
     const type = url.searchParams.get("type") || "auto"; // "address" | "name" | "auto"
-    const testnet = url.searchParams.get("testnet") !== "false";
+    const testnet = true;
 
     if (!query) {
       return NextResponse.json(
@@ -18,8 +18,11 @@ export async function GET(req: Request) {
     }
 
     // Detect type automatically
-    let isAddress = /^0x[a-fA-F0-9]{40}$/.test(query);
-    let resolvedType = type === "auto" ? (isAddress ? "address" : "name") : type;
+    const isAddress = /^0x[a-fA-F0-9]{40}$/.test(query);
+    let resolvedType = type;
+    if (type === "auto") {
+      resolvedType = isAddress ? "address" : "name";
+    }
 
     let result: string | null = null;
 

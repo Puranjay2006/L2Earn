@@ -1,9 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useAccount } from "wagmi";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Check, Loader2, ExternalLink } from "lucide-react";
+
+const ENS_USE_TESTNET = true;
+const ENS_SUFFIX = ".basetest.eth";
 
 export function BasenameClaim() {
   const { address } = useAccount();
@@ -19,7 +22,7 @@ export function BasenameClaim() {
     return (
       <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-4">
         <div className="flex gap-3">
-          <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+          <AlertCircle className="h-5 w-5 text-yellow-600 shrink-0 mt-0.5" />
           <div className="text-sm text-yellow-700">
             <p className="font-semibold">Connect your wallet to claim a Basename</p>
             <p className="mt-1">Your .basetest.eth name is your on-chain identity.</p>
@@ -40,19 +43,19 @@ export function BasenameClaim() {
 
     try {
       const res = await fetch(
-        `/api/ens/register-price?label=${encodeURIComponent(label)}&years=1&testnet=true`
+        `/api/ens/register-price?label=${encodeURIComponent(label)}&years=1&testnet=${ENS_USE_TESTNET}`
       );
       const data = await res.json();
 
-      if (!data.ok) {
-        setError(data.error);
-        setPrice(null);
-      } else {
+      if (data.ok) {
         setPrice(data.priceEth);
         setResolvedName(data.fullName);
+      } else {
+        setError(data.error);
+        setPrice(null);
       }
-    } catch (err) {
-      setError("Failed to check price");
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Failed to check price");
       setPrice(null);
     } finally {
       setLoading(false);
@@ -74,24 +77,24 @@ export function BasenameClaim() {
           label,
           owner: address,
           years: 1,
-          testnet: true,
+          testnet: ENS_USE_TESTNET,
           reverseRecord: true,
         }),
       });
 
       const data = await res.json();
 
-      if (!data.ok) {
-        setError(data.error);
-      } else {
+      if (data.ok) {
         setTxHash(data.txHash);
         setExplorerUrl(data.explorerUrl);
         setLabel("");
         setPrice(null);
         setResolvedName(null);
+      } else {
+        setError(data.error);
       }
-    } catch (err) {
-      setError("Failed to register basename");
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Failed to register basename");
     } finally {
       setLoading(false);
     }
@@ -101,7 +104,7 @@ export function BasenameClaim() {
     return (
       <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-6">
         <div className="flex items-start gap-3">
-          <Check className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+          <Check className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
           <div className="flex-1">
             <h3 className="font-semibold text-green-700">Basename Registered!</h3>
             <p className="text-sm text-green-600 mt-2">
@@ -125,22 +128,23 @@ export function BasenameClaim() {
   }
 
   return (
-    <div className="rounded-lg border border-primary/20 bg-gradient-to-br from-primary/5 to-transparent p-6">
+    <div className="rounded-lg border border-primary/20 bg-linear-to-br from-primary/5 to-transparent p-6">
       <div className="mb-4">
         <h3 className="font-semibold text-foreground mb-1">Claim Your Basename</h3>
         <p className="text-sm text-muted-foreground">
-          Get your .basetest.eth name as your on-chain identity for L2Earn
+          Get your {ENS_SUFFIX} name as your on-chain identity for L2Earn
         </p>
       </div>
 
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-foreground mb-2">
+          <label htmlFor="basename-label" className="block text-sm font-medium text-foreground mb-2">
             Desired name
           </label>
           <div className="flex gap-2">
             <input
               type="text"
+              id="basename-label"
               value={label}
               onChange={(e) => {
                 setLabel(e.target.value.toLowerCase());
@@ -151,14 +155,14 @@ export function BasenameClaim() {
               disabled={loading}
             />
             <span className="flex items-center text-sm text-muted-foreground px-3 py-2 rounded-lg border border-primary/20 bg-background/50">
-              .basetest.eth
+              {ENS_SUFFIX}
             </span>
           </div>
         </div>
 
         {error && (
           <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 flex gap-2">
-            <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0 mt-0.5" />
+            <AlertCircle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
             <p className="text-sm text-red-700">{error}</p>
           </div>
         )}

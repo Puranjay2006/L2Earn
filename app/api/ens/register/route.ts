@@ -12,7 +12,6 @@ export async function POST(req: Request) {
       label?: string;
       owner?: string;
       years?: number;
-      testnet?: boolean;
       reverseRecord?: boolean;
     };
 
@@ -25,7 +24,8 @@ export async function POST(req: Request) {
       );
     }
 
-    const { label, owner, years = 1, testnet = true, reverseRecord = true } = body;
+    const { label, owner, years = 1, reverseRecord = true } = body;
+    const useTestnet = true;
 
     // Validate inputs
     if (!label || !owner) {
@@ -59,9 +59,9 @@ export async function POST(req: Request) {
       );
     }
 
-    const rpcUrl = testnet ? "https://sepolia.base.org" : "https://mainnet.base.org";
-    const config = testnet ? BASENAME_REGISTRAR.testnet : BASENAME_REGISTRAR.mainnet;
-    const chain = testnet ? baseSepolia : base;
+    const rpcUrl = useTestnet ? "https://sepolia.base.org" : "https://mainnet.base.org";
+    const config = useTestnet ? BASENAME_REGISTRAR.testnet : BASENAME_REGISTRAR.mainnet;
+    const chain = useTestnet ? baseSepolia : base;
 
     // Setup wallet
     const account = privateKeyToAccount(minterKey as `0x${string}`);
@@ -92,7 +92,7 @@ export async function POST(req: Request) {
           reverseRecord,
         },
       ],
-      value: (priceWei as bigint) + ((priceWei as bigint) / 10n), // Add 10% buffer
+      value: priceWei + (priceWei / 10n), // Add 10% buffer
     });
 
     // Wait for confirmation
@@ -105,7 +105,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const fullName = formatBasename(label.toLowerCase(), testnet);
+    const fullName = formatBasename(label.toLowerCase(), useTestnet);
 
     return NextResponse.json({
       ok: true,
@@ -113,8 +113,8 @@ export async function POST(req: Request) {
       fullName,
       owner,
       txHash,
-      chainId: testnet ? 84532 : 8453,
-      explorerUrl: testnet
+      chainId: useTestnet ? 84532 : 8453,
+      explorerUrl: useTestnet
         ? `https://sepolia.basescan.org/tx/${txHash}`
         : `https://basescan.org/tx/${txHash}`,
     });

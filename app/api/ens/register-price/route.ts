@@ -8,8 +8,8 @@ export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
     const label = url.searchParams.get("label");
-    const years = parseInt(url.searchParams.get("years") || "1", 10);
-    const testnet = url.searchParams.get("testnet") !== "false";
+    const years = Number.parseInt(url.searchParams.get("years") || "1", 10);
+    const testnet = true;
 
     if (!label) {
       return NextResponse.json(
