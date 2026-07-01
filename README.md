@@ -1,161 +1,48 @@
 # L2Earn
 
-**Learn-to-Earn for the Great Handover.** Web3NZ Hackathon · Team 13 · UoA · Apr 2026.
+A learn-to-earn marketplace where humans and AI agents both pay attention to brand campaigns. Users watch a short video, pass a Claude-powered quiz, and earn dNZD (a New Zealand-regulated digital stablecoin) directly to their MetaMask wallet. The same campaign exposes a machine-readable feed for AI agents to index and recommend brands autonomously.
 
-Watch a short video → pass an AI-tutored quiz → earn **dNZD** in your wallet. The same campaign is published as a machine-readable feed so AI agents can index brands too. **One campaign, two audiences.**
+Built for the NewMoney ecosystem.
 
-## Why this exists
+**Live app:** [web3team13-tawny.vercel.app](https://web3team13-tawny.vercel.app)
 
-Two prompts, fused into one product:
+## What it does
 
-1. **NewMoney's brief** — Ryan Johnson-Hunt's pitch: a learn-to-earn flow where brands sponsor short videos + quizzes, learners earn dNZD on completion, publishers (e.g. NBR-style outlets) earn a margin. CAC that beats Google Ads.
-2. **Hackathon theme — The Great Handover** — by 2126, the buyer is an AI agent, not a human. Brands need to teach *both* audiences. L2Earn's `/api/agents/campaigns` endpoint is the open feed agents read before recommending or transacting.
-
-Stablecoin settlement on dNZD is the connective tissue.
+- **Campaigns** - 12 brand education campaigns across Easy, Medium, and Hard difficulty levels
+- **AI Tutor** - Claude-powered quizzes generated on the fly; explains wrong answers and adapts to what you actually learned
+- **dNZD Payouts** - NZ-regulated, 1:1 reserve-backed stablecoin sent to your wallet on quiz completion
+- **Agent Feed** - every campaign exposes structured data so AI agents can index and recommend brands without human intervention
+- **Wallet Dashboard** - dNZD balance, cross-chain bridge, and on-chain attestations via EAS
+- **Leaderboard** - top earners ranked by dNZD accumulated
+- **ENS / Basenames** - wallet addresses displayed as human-readable names
 
 ## Stack
 
-- **Next.js 16** (App Router) · **React 19** · **TypeScript** · **Tailwind v4**
-- **shadcn/ui** + Lucide
-- **Reown AppKit + wagmi + viem** — real wallet connection (MetaMask / WalletConnect / Coinbase) on Base, Base Sepolia, Mainnet, Arbitrum, Polygon, Optimism
-- **Anthropic Claude** (`claude-haiku-4-5-20251001`) for quiz generation + grading
-- **File-backed dNZD ledger** in `data/store.json` — mocked per Ryan's transcript ("just use the stablecoin in net solution and you're eligible")
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 15 (App Router) |
+| Language | TypeScript |
+| UI | shadcn/ui, Radix UI, Tailwind CSS |
+| Web3 | wagmi, viem |
+| AI | Anthropic Claude SDK |
+| Stablecoin | dNZD (NewMoney) |
+| Analytics | Vercel Analytics |
+| Deployment | Vercel |
 
-## Run it
+## Running locally
 
 ```bash
-git clone https://github.com/Melware0-0/web3_team13.git
-cd web3_team13
-git checkout puranjay_branch
-cp .env.example .env.local
-# Fill in NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID (free at walletconnect.network)
-# Optionally fill ANTHROPIC_API_KEY (otherwise quiz uses a deterministic stub)
 npm install
 npm run dev
 ```
 
-Open http://localhost:3000.
-
-## Master wallet payout config
-
-To send the completion payout from a server-side master wallet, set these in `.env.local`:
-
-```bash
-MASTER_WALLET_PRIVATE_KEY=0x...
-MASTER_WALLET_ADDRESS=0xC7Fd206cC5534700B06A760CeAd2A0602aF036b7
-EVM_RPC_URL=https://sepolia.base.org
-EVM_CHAIN_ID=84532
-NZD_TOKEN_ADDRESS=0x63ee4b77d3912DC7bCe711c3BE7bF12D532F1853
-NZD_TOKEN_DECIMALS=18
-NZD_PAYOUT_AMOUNT=5
-```
-
-Without these variables, `/api/payout` will return a configuration error and no on-chain transfer is sent.
-`MASTER_WALLET_PRIVATE_KEY` must derive to `MASTER_WALLET_ADDRESS`, otherwise payout calls are rejected.
-
-## Demo path (Sunday, 5pm)
-
-1. **`/`** — NewMoney-themed landing. Click "Browse Campaigns".
-2. **`/wallet`** — connect MetaMask on **Base Sepolia** (testnet, no real funds). Your `0x…` address is your identity.
-3. **`/campaigns`** — pick "What is dNZD?".
-4. Watch the 60-second intro video.
-5. Click **"Start AI Quiz"** — Claude generates 3 questions live from the campaign transcript.
-6. Answer → submit. Claude grades and explains every wrong answer.
-7. On pass: **+5.00 dNZD** banner appears. Server-side guard blocks double-credits.
-8. Back to **`/wallet`** — balance card shows 5.00 dNZD with the campaign in tx history.
-9. **The Handover moment** — open `/api/agents/campaigns` in a new tab. Same campaign, machine-readable. *"In 2126 your AI shopping agent ingests this before recommending a brand."*
-10. Close on the NewMoney slide: NZ-regulated, 1:1 reserve-backed, multi-chain via LayerZero.
-
-## What's where
+Create `.env.local`:
 
 ```
-app/
-  page.tsx                       # L2Earn landing
-  campaigns/
-    page.tsx                     # campaign grid
-    [id]/page.tsx                # video + AI quiz + payout
-  wallet/page.tsx                # WalletConnector + dNZD balance
-  api/
-    quiz/generate/route.ts       # Claude -> 3 MCQs, cached server-side by quizId
-    quiz/grade/route.ts          # grades + explanations, decides pass/fail
-    wallet/route.ts              # GET balance + tx history
-    wallet/credit/route.ts       # POST mints dNZD on quiz pass (one-shot per campaign)
-    agents/campaigns/route.ts    # the machine-readable feed for AI agents
-
-components/
-  navbar.tsx, hero-section.tsx, feature-cards.tsx, footer.tsx
-  wallet-connector.tsx           # Reown AppKit connect card (kept from shu_branch)
-  web3-provider.tsx              # wagmi + AppKit provider (kept)
-  campaign-card.tsx              # campaign grid tile
-  quiz-player.tsx                # AI tutor flow client component
-  dnzd-balance.tsx               # /wallet balance + tx list
-  ui/                            # shadcn primitives
-
-lib/
-  campaigns.ts                   # seed campaign data
-  store.ts                       # dNZD ledger (file-backed JSON, cents-precise)
-  anthropic.ts                   # Claude client + in-memory quiz session cache
-  wagmi-config.ts                # networks + Reown adapter
+NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your_project_id
+ANTHROPIC_API_KEY=your_api_key
 ```
 
-## Tracks targeted
+## Deployment
 
-- **NewMoney Builder** ($500) — dNZD is the settlement rail for every payout.
-- **Theme: The Great Handover** — `/api/agents/campaigns` is the open spec for agent indexing; the AI tutor itself is an agent.
-- (Stretch, separate planning) — Local Systems · Digital Identity · Avalanche C-Chain · Fire Eyes/ENS.
-
-## Judging Criteria (NewMoney Builder Track)
-
-### ✅ Real-world usefulness
-- **Learn-to-earn incentive** — Brands sponsor educational campaigns, learners earn real stablecoin. Solves CAC discovery problem for publishers (beats Google Ads).
-- **AI-tutored quizzes** — Claude generates and grades questions live, not static. Customizable per campaign transcript.
-- **Cross-chain wallet support** — Connect via MetaMask, WalletConnect, Coinbase Wallet. Multi-chain (Base, Arbitrum, Polygon, Optimism, Mainnet).
-
-### ✅ Commercial viability
-- **Scalable model** — Publisher + Brand + Learner. Each party extracting value. Brands acquire engaged users; publishers earn margin; learners earn dNZD.
-- **dNZD settlement** — NZ-regulated, 1:1 reserve-backed stablecoin. Multi-chain via LayerZero. Eliminates FX friction for local businesses.
-- **Proof of work** — Completion attestations on-chain (EAS). Portable credentials for resume/skills verification.
-
-### ✅ Simplicity and ease of implementation
-- **5-minute user flow** — Connect wallet → watch video → pass quiz → receive dNZD. No account creation, no email.
-- **API-first design** — Same campaign served as human-readable web (`/campaigns/[id]`) and machine-readable JSON (`/api/agents/campaigns`). Extensible for AI agents.
-- **Open-source stack** — Next.js, React, TypeScript, wagmi, Claude API. No proprietary or exotic dependencies.
-
-### ✅ Ease of use and product clarity
-- **Visual hierarchy** — Navbar, hero, feature cards, campaign grid, quiz flow, wallet balance. Every section purpose-clear.
-- **Real-time feedback** — Quiz grading with line-by-line explanations from Claude. Pass/fail verdict immediate.
-- **ENS integration** — Leaderboard shows ENS names (e.g. `vitalik.eth`) alongside avatars. User recognition without wallet copy-paste.
-
-### ✅ Quality of prototype
-- **End-to-end flow** — Scaffold → mock wallet → Claude integration → dNZD payout → leaderboard → agent feed. All steps working.
-- **Build passing** — `npm run build` compiles without errors. All routes SSG/SSR pre-rendered.
-- **Error handling** — ENS resolution timeouts gracefully; wallet disconnection handled; quiz grade validation server-side.
-
-### ✅ Clear use of stablecoins and blockchain infrastructure
-- **dNZD every step** — Balance tracking, transaction history, multi-user leaderboard. All in cents-precise dNZD.
-- **Blockchain identity** — Wallet address is identity. No username, no email. Portable across apps via address.
-- **Attestations** — EAS (Ethereum Attestation Service) integration for shareable course completion proof.
-
-### ✅ Trust, safety, and responsible design
-- **No keys in code** — Wallet private key gated behind `.env.local` (gitignored). Master wallet for server-side payouts only.
-- **One-shot payout guard** — Server tracks `(address, campaignId)` pairs. User cannot earn twice on same campaign.
-- **Transparent mock** — UI clearly labels "testnet · mock" for dNZD. Honest about v1 limitations.
-- **SIWE-ready** — Payout endpoint is designed to accept SIWE signature challenge in v2.
-
-### ✅ Quality of presentation
-- **Cohesive story** — Landing explains "learn-to-earn" + "Great Handover" + "dNZD settlement" in 60 seconds.
-- **Micro-interactions** — Navbar hover underline, card shadows, gradient backgrounds. Feedback on click.
-- **Documentation** — README covers stack, running locally, demo path, honest security notes.
-- **Pitch materials** — `/api/agents/campaigns` showcases the "open spec" moment for judges.
-
-## Security notes (honest disclosures for judges)
-
-- **dNZD is mocked.** No real chain mint. We display "testnet · mock" in the UI. A v2 would deploy a real ERC20 (Base or Avalanche) with NewMoney's wholesale counterparty minting on quiz pass.
-- **Wallet identity is the connected `address`** with no signature challenge. A v2 would gate `POST /api/wallet/credit` behind a SIWE signature.
-- **Quiz integrity** — correct answers never leave the server. `generate` caches the full quiz in-memory keyed by `quizId`; `grade` looks it up. No client-side tampering vector.
-
-## Built with thanks to
-
-The NewMoney team — Ryan Johnson-Hunt, Tim Maclean, Will Remor, Craig Farndale — and the Web3UOA / WDCC organisers. The wallet workshop scaffold on `shu_branch` was the launchpad for everything in this build.
-
-> *"For builders, this is what freedom looks like."* — NewMoney
+Deployed on Vercel. Push to `main` to trigger a production build.
